@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      APP_VERSION: 9.3.
+      APP_VERSION: 9.3.${{github.run_number}}
     
     steps:
     - name: Checkout code
@@ -23,19 +23,15 @@ jobs:
       with:
         dotnet-version: '9.x' # Specify the .NET version you need
 
-    - name: Generate build number
-      uses: einaregilsson/build-number@v3
-      with:
-        token: ${{secrets.github_token}}        
     - name: Print new build number
-      run: echo "Build number is $BUILD_NUMBER"
+      run: echo "App version is ${{ env:APP_VERSION }}"
       # Or, if you're on Windows: echo "Build number is ${env:BUILD_NUMBER}"
  
     - name: Restore dependencies
       run: dotnet restore
  
     - name: Build the project
-      run: dotnet build --configuration Release --no-restore /p:FileVersion=${{ env:APP_VERSION }}${{ env:BUILD_NUMBER }} /p:AssemblyVersion=${{ env:APP_VERSION }}${{ env:BUILD_NUMBER }} /p:Version=${{ env:APP_VERSION }}${{ env:BUILD_NUMBER }}
+      run: dotnet build --configuration Release --no-restore /p:FileVersion=${{ env:APP_VERSION }} /p:AssemblyVersion=${{ env:APP_VERSION }} /p:Version=${{ env:APP_VERSION }}
  
     - name: Pack the NuGet package
       run: dotnet pack --configuration Release --no-build --output ./nupkg
