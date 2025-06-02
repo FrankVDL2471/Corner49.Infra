@@ -6,6 +6,11 @@ on:
       - main
       - 'release/*' # Trigger on any branch named 'release/*'
  
+env:
+  # Setting an environment variable with the value of a configuration variable
+  APP_VERSION: '9.3.'
+
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -19,15 +24,19 @@ jobs:
       with:
         dotnet-version: '9.x' # Specify the .NET version you need
 
-    - name: Get Version
-      uses: maltoze/get-version-action@v1
-      id: get_version
+    - name: Generate build number
+      uses: einaregilsson/build-number@v3
+      with:
+        token: ${{secrets.github_token}}        
+    - name: Print new build number
+      run: echo "Build number is $BUILD_NUMBER"
+      # Or, if you're on Windows: echo "Build number is ${env:BUILD_NUMBER}"
  
     - name: Restore dependencies
       run: dotnet restore
  
     - name: Build the project
-      run: dotnet build --configuration Release --no-restore /p:FileVersion=${{ steps.get_version.outputs.version-without-v }} /p:AssemblyVersion=${{ steps.get_version.outputs.version-without-v }} /p:Version=${{ steps.get_version.outputs.version-without-v }}
+      run: dotnet build --configuration Release --no-restore /p:FileVersion=${{ env:APP_VERSION }}${{ env:BUILD_NUMBER }} /p:AssemblyVersion=${{ env:APP_VERSION }}${{ env:BUILD_NUMBER }} /p:Version=${{ env:APP_VERSION }}${{ env:BUILD_NUMBER }}
  
     - name: Pack the NuGet package
       run: dotnet pack --configuration Release --no-build --output ./nupkg
