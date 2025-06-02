@@ -7,8 +7,7 @@ on:
       - 'release/*' # Trigger on any branch named 'release/*'
  
 env:
-  # Setting an environment variable with the value of a configuration variable
-  APP_VERSION: '9.3.'
+  APP_VERSION: 9.3.
 
 
 jobs:
