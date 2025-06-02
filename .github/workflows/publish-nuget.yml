@@ -32,7 +32,7 @@ jobs:
       run: dotnet restore
  
     - name: Build the project
-      run: dotnet build --configuration Release --no-restore /p:FileVersion=${{ vars:APP_VERSION }}${{ env:BUILD_NUMBER }} /p:AssemblyVersion=${{ vars:APP_VERSION }}${{ env:BUILD_NUMBER }} /p:Version=${{ vars:APP_VERSION }}${{ env:BUILD_NUMBER }}
+      run: dotnet build --configuration Release --no-restore /p:FileVersion=${{ env:APP_VERSION }}${{ env:BUILD_NUMBER }} /p:AssemblyVersion=${{ env:APP_VERSION }}${{ env:BUILD_NUMBER }} /p:Version=${{ env:APP_VERSION }}${{ env:BUILD_NUMBER }}
  
     - name: Pack the NuGet package
       run: dotnet pack --configuration Release --no-build --output ./nupkg
