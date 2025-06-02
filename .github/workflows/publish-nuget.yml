@@ -10,7 +10,10 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
- 
+    
+    env:
+      APP_VERSION: 9.3.
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
