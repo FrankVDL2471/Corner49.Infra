@@ -24,7 +24,7 @@ jobs:
         dotnet-version: '9.x' # Specify the .NET version you need
 
     - name: Print new build number
-      run: echo "App version is ${{ env:APP_VERSION }}"
+      run: echo "App version is ${{ env.APP_VERSION }}"
       # Or, if you're on Windows: echo "Build number is ${env:BUILD_NUMBER}"
  
     - name: Restore dependencies
