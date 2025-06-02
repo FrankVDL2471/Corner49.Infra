@@ -1,0 +1,11 @@
+﻿@using Corner49.FormBuilder
+@using Corner49.Sample.Models
+@model DataModel
+
+@{
+    ViewData["Title"] = "My Form";
+}
+
+
+@Html.BuildForm(Model).Build()
+

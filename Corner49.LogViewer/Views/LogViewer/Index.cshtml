@@ -1,0 +1,79 @@
+﻿@using Corner49.FormBuilder
+@using Corner49.LogViewer.Models
+@model LogViewerModel
+
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+
+
+<style>
+	.server-console {
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		z-index: 2;
+		margin-bottom: 0.33rem;
+		margin-right: 0.5rem;
+		color: #181818;
+		font-size: 12px;
+	}
+
+	.console {
+		font-family: Courier New, Courier, monospace;
+		font-size: 12px;
+		background-color: #303030;
+		color: #ffffffc7;
+		border-radius: 0.5rem;
+		padding: 1rem;
+	}
+</style>
+
+<div class="col-xl-12">
+	<div class="card  flex-fill">
+		<div class="card-header">
+			<form asp-action="Filter">
+				<div class="row">
+					@Html.BuildForm(this.Context, Model).WithCategory("Filter").WithLookup("App", Model.Apps, false).Build(new BuildOptions
+					{
+						ColumnWidth = 3,
+						ColumnsSizes = new int[] { 3, 3, 1, 2, 2 },
+						LabelAsPlaceholder = true
+					})
+					<div class="col-sm-1" style="padding-top:5px">
+						<input type="submit" value="Load" class="btn btn-sm btn-primary" />
+					</div>
+
+				</div>
+			</form>
+
+
+		</div>
+		<div class="card-body">
+
+			<div class="console">
+
+				@foreach (var log in Model.Messages)
+				{
+					@if (log.Level == LogLevel.Fail)
+					{
+						<div style="color:red">[@log.Time?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss.fff")|@log.Level|@log.Category] @log.Message</div>
+					} else if (log.Level == LogLevel.Crsh)
+					{
+						<div style="color:crimson">[@log.Time?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss.fff")|@log.Level|@log.Category] @log.Message</div>
+					} else if (log.Level == LogLevel.Warn)
+					{
+						<div style="color:orange">[@log.Time?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss.fff")|@log.Level|@log.Category] @log.Message</div>
+					} else
+					{
+						<div>[@log.Time?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss.fff")|@log.Level|@log.Category] @log.Message</div>
+					}
+				}
+
+			</div>
+
+		</div>
+	</div>
+</div>

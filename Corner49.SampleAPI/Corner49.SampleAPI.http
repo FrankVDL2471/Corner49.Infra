@@ -1,0 +1,6 @@
+@Corner49.SampleAPI_HostAddress = http://localhost:3000
+
+PUT {{Corner49.SampleAPI_HostAddress}}/Message/10
+Accept: application/json
+
+###
