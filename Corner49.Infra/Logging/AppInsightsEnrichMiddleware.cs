@@ -16,7 +16,12 @@ namespace Corner49.Infra.Logging {
 		public async Task InvokeAsync(HttpContext context) {
 			var request = context.Request;
 
-			var requestTelemetry = context.Features.Get<RequestTelemetry>();
+
+			RequestTelemetry? requestTelemetry = null;
+			try {
+				requestTelemetry = context.Features.Get<RequestTelemetry>();
+			} catch (Exception ex) {
+			}
 			if (requestTelemetry == null) {
 				await _next(context);
 				return;

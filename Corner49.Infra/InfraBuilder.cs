@@ -536,8 +536,10 @@ namespace Corner49.Infra {
 			// Configure the HTTP request pipeline.
 			if (app.Environment.IsDevelopment()) {
 			} else {
-				if (_hasViewControllers) { 
-					if (!_showDeveloperError) {
+				if (_hasViewControllers) {
+					if (_showDeveloperError) {
+						app.UseDeveloperExceptionPage();
+					} else { 
 						app.UseExceptionHandler(_errorPage ?? "/Home/Error");
 					}					
 				}
