@@ -19,6 +19,7 @@
     <PackageReference Include="Azure.Storage.Files.Shares" Version="12.22.0" />
     <PackageReference Include="Cronos" Version="0.11.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="9.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.51.0" />
     <PackageReference Include="Microsoft.Azure.SignalR.Management" Version="1.30.3" />

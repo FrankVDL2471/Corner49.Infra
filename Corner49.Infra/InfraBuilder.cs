@@ -15,21 +15,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Scalar.AspNetCore;
-using Serilog;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Reflection;
 using System.Text.Json.Serialization;
 using Corner49.Infra.Helpers;
 using Corner49.Infra.ApiKey;
-using DnsClient.Internal;
-using Microsoft.Extensions.Azure;
-using Microsoft.Azure.Storage.Shared.Protocol;
 using System.Text.Json;
-using Azure.Messaging.EventGrid.SystemEvents;
-using System.Diagnostics.Eventing.Reader;
-using Microsoft.VisualBasic;
 using Microsoft.AspNetCore.OpenApi;
 
 namespace Corner49.Infra {
@@ -323,7 +313,8 @@ namespace Corner49.Infra {
 		public InfraBuilder WithViewControllers(Action<System.Text.Json.JsonSerializerOptions>? jsonOptions = null, Func<IMvcBuilder, IMvcBuilder>? mvcBuilder = null) {
 			_hasViewControllers = true;
 
-			IMvcBuilder mvc = _services.AddControllersWithViews();
+			IMvcBuilder mvc = _services.AddControllersWithViews()
+				.AddRazorRuntimeCompilation();
 			if (mvcBuilder != null) mvc = mvcBuilder(mvc);
 
 			mvc.AddJsonOptions(options => {
