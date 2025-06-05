@@ -16,7 +16,7 @@ namespace Corner49.LogViewer.Models {
 
 
 		public LogMessage Create() {
-			var props = JsonSerializer.Deserialize<HttpProperties>(this.Properties, JsonHelper.Options);
+			var props = JsonSerializer.Deserialize<HttpProperties>(this.Properties);
 
 			return new LogMessage {
 				Time = Time,
