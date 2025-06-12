@@ -124,8 +124,8 @@ namespace Corner49.FormBuilder.Builder {
 		}
 
 
-		public FormFieldBuilder AsReadonly() {
-			_readOnly = true;
+		public FormFieldBuilder AsReadonly(bool readOnly = true) {
+			_readOnly = readOnly;
 			return this;
 		}
 
