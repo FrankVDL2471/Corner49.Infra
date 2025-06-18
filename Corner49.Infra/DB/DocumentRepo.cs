@@ -3,6 +3,7 @@ using Corner49.DB.Tools;
 using Corner49.Infra.Tools;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -16,7 +17,7 @@ namespace Corner49.Infra.DB {
 		IAsyncEnumerable<T> GetItems(string? paritionId);
 		Task<T> AddItem(string paritionId, T item);
 
-		Task<T> UpsertItem(string paritionId, T item);
+		Task<T> UpsertItem(string paritionId, T item, Action<HttpStatusCode>? status = null);
 
 		Task<T> PatchItem(string partitionId, string itemId, IReadOnlyList<PatchOperation> patches);
 
@@ -204,13 +205,14 @@ namespace Corner49.Infra.DB {
 			throw new DocumentException($"AddItem failed", lastErr);
 		}
 
-		public async Task<T> UpsertItem(string partitionId, T item) {
+		public async Task<T> UpsertItem(string partitionId, T item, Action<HttpStatusCode>? status = null) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			Exception? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.UpsertItemAsync(item, new PartitionKey(partitionId));
+					if (status != null) status.Invoke(resp.StatusCode);
 					return resp.Resource;
 
 				} catch (CosmosException err) {
