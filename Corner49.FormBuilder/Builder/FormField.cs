@@ -311,7 +311,8 @@ namespace Corner49.FormBuilder.Builder {
 					}
 				} else if (val is decimal dec) {
 					input.Attributes.Add("value", dec.ToString(System.Globalization.CultureInfo.InvariantCulture));
-
+				} else if (val is List<string> lst) {
+					input.Attributes.Add("value", string.Join(",", lst));
 				} else {
 					input.Attributes.Add("value", val.ToString());
 				}
