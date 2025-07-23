@@ -12,6 +12,9 @@ namespace Corner49.Infra.Storage {
 		Task<bool> Exists(string containerName, string name);
 
 		Task<Stream?> Read(string containerName, string name);
+
+		Task<Stream?> Write(string containerName, string name);
+
 		Task<string> Upload(string containerName, IFormFile file, string? name = null, Dictionary<string, string>? metaData = null);
 		Task<string> Upload(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null);
 		Task<string> UploadBase64(string containerName, string name, string data, string? contentType = null, Dictionary<string, string>? metaData = null);
@@ -103,7 +106,13 @@ namespace Corner49.Infra.Storage {
 			var client = container.GetBlobClient(name);
 			if (!await client.ExistsAsync()) return null;
 			return await client.OpenReadAsync();
-		}	
+		}
+
+		public async Task<Stream?> Write(string containerName, string name) {
+			var container = await GetContainer(containerName);
+			var client = container.GetBlobClient(name);
+			return await client.OpenWriteAsync(true);
+		}
 
 		public async Task<string> Upload(string containerName, IFormFile file, string? name = null, Dictionary<string, string>? metaData = null) {
 			var container = await GetContainer(containerName);
