@@ -34,11 +34,15 @@ namespace Corner49.Infra.Jobs {
 				name += "(" + string.Join(", ", args.Select(c => $"{c.Key}={c.Value}")) + ")";
 			}
 
-			if (useLocalQueue) {
-				_jobClient.Enqueue(() => RunLocal(name, args, cancellationToken));
-			} else {
-				_jobClient.Enqueue(() => Run(name, args, cancellationToken));
-			}		
+			try {
+				if (useLocalQueue) {
+					_jobClient.Enqueue(() => RunLocal(name, args, cancellationToken));
+				} else {
+					_jobClient.Enqueue(() => Run(name, args, cancellationToken));
+				}
+			} catch (Exception err) {
+				_logger.LogError(err, $"StartJob {name} failed : {err.Message}");
+			}
 		}
 
 

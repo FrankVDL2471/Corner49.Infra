@@ -1,4 +1,5 @@
 ﻿using Hangfire;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -52,9 +53,19 @@ namespace Corner49.Infra.Jobs {
 		public void StartJob<T>(Dictionary<string, string>? args = null, bool? useLocalQueue = null) where T : IJobRunner {
 			var localQueue = useLocalQueue ?? _config.UseLocalQueue;
 
+			try {
 
-			var job = ActivatorUtilities.CreateInstance<T>(_serviceProvider) as IJobRunner;
-			job.StartJob(args, localQueue);
+				var job = ActivatorUtilities.CreateInstance<T>(_serviceProvider) as IJobRunner;
+				if (job == null) {
+					_logger.LogError($"StartJob {typeof(T).Name} failed : Unable to create instance");
+					return;
+				}
+
+
+				job.StartJob(args, localQueue);
+			} catch (Exception err) {
+				_logger.LogError(err, $"StartJob {typeof(T).Name} failed : {err.Message}");
+			}
 		}
 	}
 }
