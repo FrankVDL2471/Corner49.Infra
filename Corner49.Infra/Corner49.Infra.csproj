@@ -14,21 +14,21 @@
   <ItemGroup>
     <PackageReference Include="AspNetCore.HealthChecks.AzureServiceBus" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.19.0" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.24.0" />
-    <PackageReference Include="Azure.Storage.Files.Shares" Version="12.22.0" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.25.0" />
+    <PackageReference Include="Azure.Storage.Files.Shares" Version="12.23.0" />
     <PackageReference Include="Cronos" Version="0.11.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.5" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="9.0.5" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.51.0" />
-    <PackageReference Include="Microsoft.Azure.SignalR.Management" Version="1.30.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="9.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.52.1" />
+    <PackageReference Include="Microsoft.Azure.SignalR.Management" Version="1.31.0" />
     <PackageReference Include="Microsoft.Azure.Storage.Blob" Version="11.2.3" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
-    <PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore" Version="8.2.0" />
+    <PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore" Version="8.3.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.AzureAppServices" Version="9.0.5" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.4.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.AzureAppServices" Version="9.0.8" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.6.8" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.2" />
@@ -36,15 +36,15 @@
     <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="4.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.12.0" />
-    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.0" />
+    <PackageReference Include="System.Linq.Async" Version="6.0.3" />
     <PackageReference Include="Auth0.AspNetCore.Authentication" Version="1.4.1" />
     <PackageReference Include="Hangfire" Version="1.8.20" />
     <PackageReference Include="Hangfire.InMemory" Version="1.0.0" />
     <PackageReference Include="Hangfire.AzureCosmosDB" Version="2.0.8" />
 		<PackageReference Include="Hangfire.SqlServer" Version="1.8.*" />
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="*" />
-    <PackageReference Include="System.Threading.RateLimiting" Version="9.0.5" />
+    <PackageReference Include="System.Threading.RateLimiting" Version="9.0.8" />
     <PackageReference Include="TimeZoneConverter" Version="7.0.0" />
     <PackageReference Include="SkiaSharp" Version="3.119.0" />
   </ItemGroup>
