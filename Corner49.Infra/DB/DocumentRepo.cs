@@ -39,7 +39,7 @@ namespace Corner49.Infra.DB {
 		Task<string?> ReadSQL(string sql, Func<T, Task<bool>> onRead, string? partitionKey = null, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
 		Task<int> CountSQL(string where, System.Threading.CancellationToken cancelToken = default);
 
-		IAsyncEnumerable<JsonElement> RawSQL(string sql, System.Threading.CancellationToken cancelToken = default);
+		IAsyncEnumerable<object> RawSQL(string sql, System.Threading.CancellationToken cancelToken = default);
 
 		Task<ChangeFeedProcessor> GetChangeFeedProcessor(Container.ChangesHandler<T> changeHandler, string leaseName = "changeLeases", string? processorName = null, string? instanceName = null,
 						Func<Task>? onRelease = null,
@@ -496,15 +496,13 @@ namespace Corner49.Infra.DB {
 		}
 
 
-		public async IAsyncEnumerable<JsonElement> RawSQL(string sql,[EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
+		public async IAsyncEnumerable<object> RawSQL(string sql, [EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
 
 			using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(sql)) {
 				while (feed.HasMoreResults) {
 					FeedResponse<object> response = await feed.ReadNextAsync(cancelToken);
 					foreach (var resp in response) {
-						if (resp is System.Text.Json.JsonElement jobj) {
-							yield return jobj;
-						}
+						yield return resp;
 					}
 					if (cancelToken.IsCancellationRequested) break;
 				}
