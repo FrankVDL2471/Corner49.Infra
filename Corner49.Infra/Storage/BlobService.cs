@@ -2,6 +2,7 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.Extensions.Configuration;
 using System.Text;
 
@@ -17,6 +18,7 @@ namespace Corner49.Infra.Storage {
 
 		Task<string> Upload(string containerName, IFormFile file, string? name = null, Dictionary<string, string>? metaData = null);
 		Task<string> Upload(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null);
+		Task<string> Upload(string containerName, string name, byte[] data, string? contentType = null, Dictionary<string, string>? metaData = null);
 		Task<string> UploadBase64(string containerName, string name, string data, string? contentType = null, Dictionary<string, string>? metaData = null);
 
 		Task<string> Append(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null);
@@ -159,7 +161,7 @@ namespace Corner49.Infra.Storage {
 			return GetCDN(container.Name, name);
 		}
 
-		public async Task<string> Upload(string containerName, string name, byte[] data, string contentType = null) {
+		public async Task<string> Upload(string containerName, string name, byte[] data, string? contentType = null, Dictionary<string, string>? metaData = null) {
 			var container = await GetContainer(containerName);
 
 			var client = container.GetBlobClient(name);
@@ -171,6 +173,9 @@ namespace Corner49.Infra.Storage {
 				var headers = new Azure.Storage.Blobs.Models.BlobHttpHeaders();
 				headers.ContentType = contentType;
 				await client.SetHttpHeadersAsync(headers);
+			}
+			if (metaData != null) {
+				await client.SetMetadataAsync(metaData);
 			}
 
 

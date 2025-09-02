@@ -312,14 +312,45 @@ namespace Corner49.Infra.Http {
 		}
 
 
-		public async Task<Stream?> Download(string url, CancellationToken cancellationToken = default) {
+		public async Task<byte[]?> Download(string url, CancellationToken cancellationToken = default) {
 			var path = this.CompleteUrl(url);
 
-			var request = new HttpRequestMessage(HttpMethod.Get, path);
-			var client = await this.GetClient();
-			using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-			return await resp.Content.ReadAsStreamAsync();
+			using (var track = _telemetry.TrackDependency(this.GetType().Name, $"DOWNLOAD {path}")) {
+				var request = new HttpRequestMessage(HttpMethod.Get, path);
+				var client = await this.GetClient();
+				using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+				try {
+					if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
+					return await resp.Content.ReadAsByteArrayAsync();
+				} catch (HttpRequestException hre) {
+					track.SetFailed(hre, null);
+					throw new ApiClientException($"DOWNLOAD {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
+				}
+			}
 		}
+
+
+		public async Task Download(string url, Stream target, CancellationToken cancellationToken = default) {
+			var path = this.CompleteUrl(url);
+
+			using (var track = _telemetry.TrackDependency(this.GetType().Name, $"DOWNLOAD {path}")) {
+				var request = new HttpRequestMessage(HttpMethod.Get, path);
+				var client = await this.GetClient();
+				using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+				try {					
+					if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
+					await resp.Content.CopyToAsync(target, cancellationToken);
+				} catch (HttpRequestException hre) {
+					track.SetFailed(hre, null);
+					throw new ApiClientException($"DOWNLOAD {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
+				}
+			}
+		}
+
+
+
 
 
 		private string CompleteUrl(string url) {
