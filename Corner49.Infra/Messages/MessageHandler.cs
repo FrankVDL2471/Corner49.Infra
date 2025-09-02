@@ -1,5 +1,4 @@
 ﻿using Corner49.Infra.ServiceBus;
-using System.Security.Cryptography;
 
 namespace Corner49.Infra.Messages {
 

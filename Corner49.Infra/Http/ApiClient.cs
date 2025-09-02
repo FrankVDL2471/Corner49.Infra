@@ -45,7 +45,7 @@ namespace Corner49.Infra.Http {
 
 
 		protected bool IncludeDataInMetrics { get; set; }
-		protected bool EnsureSuccessStatusCode { get; set; } = true;	
+		protected bool EnsureSuccessStatusCode { get; set; } = true;
 
 		#region OAuth
 
@@ -106,7 +106,7 @@ namespace Corner49.Infra.Http {
 				string respData = null;
 				try {
 					respData = await resp.Content.ReadAsStringAsync();
-					this.OnRequest("GET", path, null, respData, resp.IsSuccessStatusCode);	
+					this.OnRequest("GET", path, null, respData, resp.IsSuccessStatusCode);
 
 					if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 
@@ -310,6 +310,17 @@ namespace Corner49.Infra.Http {
 				}
 			}
 		}
+
+
+		public async Task<Stream?> Download(string url, CancellationToken cancellationToken = default) {
+			var path = this.CompleteUrl(url);
+
+			var request = new HttpRequestMessage(HttpMethod.Get, path);
+			var client = await this.GetClient();
+			using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+			return await resp.Content.ReadAsStreamAsync();
+		}
+
 
 		private string CompleteUrl(string url) {
 			if (url.StartsWith("/")) {
