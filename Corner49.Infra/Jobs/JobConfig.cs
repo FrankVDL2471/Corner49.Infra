@@ -6,6 +6,7 @@
 		string ContainerName { get; set; }	
 		bool UseLocalQueue { get; set; }
 
+		string? QueueName { get; set; }
 		bool UseSqlServer { get; set; }
 
 		bool DisableAutomaticRestart { get; set; }
@@ -25,6 +26,8 @@
 		public string ContainerName { get; set; }
 
 		public bool UseLocalQueue { get; set; }
+
+		public string? QueueName { get; set; }
 
 		public bool UseSqlServer { get; set; }
 

@@ -8,7 +8,7 @@ namespace Corner49.Infra.Jobs {
 
 	public interface IJobManager {
 
-		void StartJob<T>(Dictionary<string, string>? args = null, bool? useLocalQueue = null) where T : IJobRunner;
+		void StartJob<T>(Dictionary<string, string>? args = null, string? queueName = null) where T : IJobRunner;
 
 	}
 
@@ -50,9 +50,8 @@ namespace Corner49.Infra.Jobs {
 			return Task.CompletedTask;
 		}
 
-		public void StartJob<T>(Dictionary<string, string>? args = null, bool? useLocalQueue = null) where T : IJobRunner {
-			var localQueue = useLocalQueue ?? _config.UseLocalQueue;
-
+		public void StartJob<T>(Dictionary<string, string>? args = null,string? queue = null) where T : IJobRunner {
+			var nm = queue ?? (_config.UseLocalQueue ? System.Environment.MachineName.ToLower() : _config.QueueName ?? "default");
 			try {
 
 				var job = ActivatorUtilities.CreateInstance<T>(_serviceProvider) as IJobRunner;
@@ -62,7 +61,7 @@ namespace Corner49.Infra.Jobs {
 				}
 
 
-				job.StartJob(args, localQueue);
+				job.StartJob(args, nm);
 			} catch (Exception err) {
 				_logger.LogError(err, $"StartJob {typeof(T).Name} failed : {err.Message}");
 			}

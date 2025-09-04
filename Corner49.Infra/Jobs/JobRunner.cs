@@ -8,7 +8,7 @@ namespace Corner49.Infra.Jobs {
 
 	public interface IJobRunner {
 
-		void StartJob(Dictionary<string, string>? args = null, bool useLocalQueue = false, CancellationToken cancellationToken = default);
+		void StartJob(Dictionary<string, string>? args = null, string? queue = null, CancellationToken cancellationToken = default);
 	}
 
 	public abstract class JobRunner : IJobRunner {
@@ -27,7 +27,7 @@ namespace Corner49.Infra.Jobs {
 
 		public IServiceProvider Services => _serviceProvider;
 
-		public void StartJob(Dictionary<string, string>? args = null, bool useLocalQueue = false, CancellationToken cancellationToken = default) {
+		public void StartJob(Dictionary<string, string>? args = null, string? queue = null, CancellationToken cancellationToken = default) {
 			string name = GetType().Name;
 
 			if (args != null) {
@@ -35,10 +35,10 @@ namespace Corner49.Infra.Jobs {
 			}
 
 			try {
-				if (useLocalQueue) {
-					_jobClient.Enqueue(() => RunLocal(name, args, cancellationToken));
-				} else {
+				if (queue == null) {
 					_jobClient.Enqueue(() => Run(name, args, cancellationToken));
+				} else {
+					_jobClient.Enqueue(queue, () => Run(name, args, cancellationToken));
 				}
 			} catch (Exception err) {
 				_logger.LogError(err, $"StartJob {name} failed : {err.Message}");
@@ -62,22 +62,22 @@ namespace Corner49.Infra.Jobs {
 			}
 		}
 
-		[DisplayName("{0}")]
-		[JobQueue()]
-		[AutomaticRetry(OnAttemptsExceeded = AttemptsExceededAction.Delete, Attempts = 3)]
-		public async Task RunLocal(string name, Dictionary<string, string>? args = null, CancellationToken cancellationToken = default) {
-			string fullName = name;
-			if (args != null) {
-				fullName += "(" + string.Join(", ", args.Select(c => $"{c.Key}={c.Value}")) + ")";
-			}
+		//[DisplayName("{0}")]
+		//[JobQueue()]
+		//[AutomaticRetry(OnAttemptsExceeded = AttemptsExceededAction.Delete, Attempts = 3)]
+		//public async Task RunLocal(string name, Dictionary<string, string>? args = null, CancellationToken cancellationToken = default) {
+		//	string fullName = name;
+		//	if (args != null) {
+		//		fullName += "(" + string.Join(", ", args.Select(c => $"{c.Key}={c.Value}")) + ")";
+		//	}
 
 
-			try {
-				await Execute(args, cancellationToken);
-			} catch (Exception err) {
-				_logger.LogError(err, $"Job {fullName} failed : {err.Message}");
-			}
-		}
+		//	try {
+		//		await Execute(args, cancellationToken);
+		//	} catch (Exception err) {
+		//		_logger.LogError(err, $"Job {fullName} failed : {err.Message}");
+		//	}
+		//}
 
 
 

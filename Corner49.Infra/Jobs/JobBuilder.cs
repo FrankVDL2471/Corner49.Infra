@@ -56,7 +56,7 @@ namespace Corner49.Infra.Jobs {
 
 			services.AddHangfireServer((cfg) => {
 				cfg.CancellationCheckInterval = TimeSpan.FromSeconds(5);
-				cfg.Queues = new[] { config.UseLocalQueue ? System.Environment.MachineName.ToLower() : "default" };
+				cfg.Queues = new[] { config.UseLocalQueue ? System.Environment.MachineName.ToLower() :  (config.QueueName ?? "default") };
 			});
 			services.AddHostedService<JobManager>();
 			services.AddSingleton<IJobConfig>(config);
