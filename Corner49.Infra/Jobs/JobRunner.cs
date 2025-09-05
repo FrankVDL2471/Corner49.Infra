@@ -8,7 +8,7 @@ namespace Corner49.Infra.Jobs {
 
 	public interface IJobRunner {
 
-		void StartJob(Dictionary<string, string>? args = null, string? queue = null, CancellationToken cancellationToken = default);
+		string StartJob(Dictionary<string, string>? args = null, string? queue = null, CancellationToken cancellationToken = default);
 	}
 
 	public abstract class JobRunner : IJobRunner {
@@ -27,7 +27,7 @@ namespace Corner49.Infra.Jobs {
 
 		public IServiceProvider Services => _serviceProvider;
 
-		public void StartJob(Dictionary<string, string>? args = null, string? queue = null, CancellationToken cancellationToken = default) {
+		public string StartJob(Dictionary<string, string>? args = null, string? queue = null, CancellationToken cancellationToken = default) {
 			string name = GetType().Name;
 
 			if (args != null) {
@@ -36,12 +36,14 @@ namespace Corner49.Infra.Jobs {
 
 			try {
 				if (queue == null) {
-					_jobClient.Enqueue(() => Run(name, args, cancellationToken));
+					return _jobClient.Enqueue(() => Run(name, args, cancellationToken));
 				} else {
-					_jobClient.Enqueue(queue, () => Run(name, args, cancellationToken));
+					string id = _jobClient.Enqueue(queue, () => Run(name, args, cancellationToken));
+					return $"{queue}:{id}";
 				}
 			} catch (Exception err) {
 				_logger.LogError(err, $"StartJob {name} failed : {err.Message}");
+				return "ERROR: " + err.Message;
 			}
 		}
 

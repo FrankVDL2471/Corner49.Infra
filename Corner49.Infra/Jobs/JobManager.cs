@@ -8,7 +8,7 @@ namespace Corner49.Infra.Jobs {
 
 	public interface IJobManager {
 
-		void StartJob<T>(Dictionary<string, string>? args = null, string? queueName = null) where T : IJobRunner;
+		string StartJob<T>(Dictionary<string, string>? args = null, string? queueName = null) where T : IJobRunner;
 
 	}
 
@@ -50,20 +50,21 @@ namespace Corner49.Infra.Jobs {
 			return Task.CompletedTask;
 		}
 
-		public void StartJob<T>(Dictionary<string, string>? args = null,string? queue = null) where T : IJobRunner {
+		public string StartJob<T>(Dictionary<string, string>? args = null,string? queue = null) where T : IJobRunner {
 			var nm = queue ?? (_config.UseLocalQueue ? System.Environment.MachineName.ToLower() : _config.QueueName ?? "default");
 			try {
 
 				var job = ActivatorUtilities.CreateInstance<T>(_serviceProvider) as IJobRunner;
 				if (job == null) {
 					_logger.LogError($"StartJob {typeof(T).Name} failed : Unable to create instance");
-					return;
+					return "ERROR: Unable to create job instance";
 				}
 
 
-				job.StartJob(args, nm);
+				return job.StartJob(args, nm);
 			} catch (Exception err) {
 				_logger.LogError(err, $"StartJob {typeof(T).Name} failed : {err.Message}");
+				return "ERROR: StartJob failed, " + err.Message;
 			}
 		}
 	}
