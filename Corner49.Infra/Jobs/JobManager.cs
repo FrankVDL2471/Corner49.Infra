@@ -51,7 +51,7 @@ namespace Corner49.Infra.Jobs {
 		}
 
 		public string StartJob<T>(Dictionary<string, string>? args = null,string? queue = null) where T : IJobRunner {
-			var nm = queue ?? (_config.UseLocalQueue ? System.Environment.MachineName.ToLower() : _config.QueueName ?? "default");
+			var nm = _config.UseLocalQueue ? System.Environment.MachineName.ToLower() :  queue ?? _config.QueueName ?? "default";
 			try {
 
 				var job = ActivatorUtilities.CreateInstance<T>(_serviceProvider) as IJobRunner;
