@@ -12,6 +12,8 @@
 		bool DisableAutomaticRestart { get; set; }
 
 		bool EnableDashboard { get; set; }	
+
+		int? WorkerCount { get; set; }
 	}
 
 	public class JobConfig : IJobConfig {
@@ -34,5 +36,7 @@
 		public bool DisableAutomaticRestart { get; set; }	
 
 		public bool EnableDashboard { get; set; }
+
+		public int? WorkerCount { get; set; }
 	}
 }
