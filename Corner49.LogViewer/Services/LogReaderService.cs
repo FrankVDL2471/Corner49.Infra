@@ -2,6 +2,7 @@
 using Azure.Storage.Blobs.Models;
 using Corner49.Infra.Tools;
 using Corner49.LogViewer.Models;
+using Microsoft.Azure.Cosmos.Linq;
 using Microsoft.VisualBasic;
 using System.Collections.Concurrent;
 using System.Reflection.Metadata.Ecma335;
@@ -30,14 +31,14 @@ namespace Corner49.LogViewer.Services {
 
 
 
-		private bool _initDone = false;
-		private Dictionary<string, List<string>> _apps = new Dictionary<string, List<string>>();
+		private static bool _initDone = false;
+		private static Dictionary<string, List<string>> _apps = new Dictionary<string, List<string>>();
 
 		private async Task Init() {
 			if (_initDone) return;
 			_initDone = true;
 
-			await foreach (var blob in GetBlobs(null)) {
+			await foreach (var blob in GetSubscriptions()) {
 				string[] flds = blob.Name.Split('/');
 				if (flds.Length > 8) {
 					string app = flds[8];
@@ -49,6 +50,7 @@ namespace Corner49.LogViewer.Services {
 					_apps[app].Add(src);
 				}
 			}
+
 		}
 
 		public async IAsyncEnumerable<string> GetApps() {
@@ -63,18 +65,16 @@ namespace Corner49.LogViewer.Services {
 
 			ConcurrentBag<LogMessage> logs = new ConcurrentBag<LogMessage>();
 
-			
-			
-
+			DateTime? dt = filter.Date?.ConvertToUtc();
 
 
 			if ((filter.App != null) && (_apps.ContainsKey(filter.App))) {
 				foreach (var root in _apps[filter.App]) {
 					string path = root;
-					if (filter.Date != null) {
-						path += $"/y={filter.Date.Value.Year.ToString("0000")}/m={filter.Date.Value.Month.ToString("00")}/d={filter.Date.Value.Day.ToString("00")}";
+					if (dt != null) {
+						path += $"/y={dt.Value.Year.ToString("0000")}/m={dt.Value.Month.ToString("00")}/d={dt.Value.Day.ToString("00")}";
 						if (filter.Hour != null) {
-							int hour = DateTime.Today.AddHours(filter.Hour.Value).ToUniversalTime().Hour;
+							int hour = dt.Value.AddHours(filter.Hour.Value).Hour;
 							path += $"/h={hour}";
 						}
 					}
@@ -91,7 +91,7 @@ namespace Corner49.LogViewer.Services {
 			}
 		}
 
-		public async Task Read(string appName, string path, ConcurrentBag<LogMessage> logs,  CancellationToken cancellationToken = default) {
+		public async Task Read(string appName, string path, ConcurrentBag<LogMessage> logs, CancellationToken cancellationToken = default) {
 			await Parallel.ForEachAsync(_containers, async (container, ct) => {
 				var client = container.GetBlobClient(path);
 				if (await client.ExistsAsync()) {
@@ -133,6 +133,13 @@ namespace Corner49.LogViewer.Services {
 			}
 		}
 
+		private async IAsyncEnumerable<BlobItem> GetSubscriptions() {
+			foreach (var container in _containers) {
+				await foreach (var sub in container.GetBlobsByHierarchyAsync(prefix: "resourceId=/SUBSCRIPTIONS")) {
+					yield return sub.Blob;
+				}
+			}
+		}
 
 
 
