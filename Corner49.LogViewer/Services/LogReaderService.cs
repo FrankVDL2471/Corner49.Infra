@@ -65,18 +65,21 @@ namespace Corner49.LogViewer.Services {
 
 			ConcurrentBag<LogMessage> logs = new ConcurrentBag<LogMessage>();
 
-			DateTime? dt = filter.Date?.ConvertToUtc();
+			DateTime dt = filter.Date ?? DateTime.Today;
+
+			if (filter.Hour != null) {
+				dt = dt.ToUniversalTime().AddHours(filter.Hour.Value);
+			}
+
 
 
 			if ((filter.App != null) && (_apps.ContainsKey(filter.App))) {
 				foreach (var root in _apps[filter.App]) {
 					string path = root;
-					if (dt != null) {
-						path += $"/y={dt.Value.Year.ToString("0000")}/m={dt.Value.Month.ToString("00")}/d={dt.Value.Day.ToString("00")}";
-						if (filter.Hour != null) {
-							int hour = dt.Value.AddHours(filter.Hour.Value).Hour;
-							path += $"/h={hour}";
-						}
+					path += $"/y={dt.Year.ToString("0000")}/m={dt.Month.ToString("00")}/d={dt.Day.ToString("00")}";
+					if (filter.Hour != null) {
+						int hour = dt.Hour;
+						path += $"/h={hour.ToString("00")}";
 					}
 
 					await Parallel.ForEachAsync(this.GetBlobs(path), async (itm, ct) => {
