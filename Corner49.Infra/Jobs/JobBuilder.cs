@@ -73,7 +73,11 @@ namespace Corner49.Infra.Jobs {
 			CronBuilder bld = new CronBuilder();
 			cron.Invoke(bld);
 
-			RecurringJob.AddOrUpdate<T>(id, (job) => job.Execute(null, default), bld.ToString());
+
+			RecurringJobOptions opt = new RecurringJobOptions();
+			opt.TimeZone = TimeZoneInfo.Local;
+
+			RecurringJob.AddOrUpdate<T>(id, (job) => job.Execute(null, default), bld.ToString(), opt);
 		}
 
 
