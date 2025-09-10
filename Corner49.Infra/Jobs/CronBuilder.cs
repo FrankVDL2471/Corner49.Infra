@@ -15,7 +15,8 @@
 		}
 
 		public CronBuilder WithHour(int hour) {
-			_hour = hour.ToString();
+			var dt = DateTime.Today.AddHours(hour).ToUniversalTime();  //convert to utc
+			_hour = dt.Hour.ToString();
 			return this;
 		}
 		public CronBuilder EveryHour(int stepHour) {
