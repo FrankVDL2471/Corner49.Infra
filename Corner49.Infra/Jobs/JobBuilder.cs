@@ -78,7 +78,7 @@ namespace Corner49.Infra.Jobs {
 			opt.TimeZone = TimeZoneInfo.Local;
 
 			string queue =  _config.UseLocalQueue ? System.Environment.MachineName.ToLower() :  _config.QueueName ?? "default";
-			RecurringJob.AddOrUpdate<T>(id, queue, (job) => job.Run(job.GetType().Name, null, default), bld.ToString(), opt );
+			RecurringJob.AddOrUpdate<T>(id, queue, (job) => job.Run(typeof(T).Name, null, default), bld.ToString(), opt );
 		}
 
 

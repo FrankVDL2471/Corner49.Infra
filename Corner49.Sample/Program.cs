@@ -1,13 +1,15 @@
 using Corner49.Infra;
+using Corner49.LogViewer;
 using Corner49.Sample.Handlers;
+using Corner49.Sample.Jobs;
 using Corner49.Sample.Messages;
 using Corner49.Sample.Repos;
-using Corner49.LogViewer;
+using Hangfire.Common;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 var infra = WebApplication.CreateBuilder(args)
 	.UseInfra("Sample")
-	.WithViewControllers(null, mvc => mvc.AddLogViewer() )
+	.WithViewControllers(null, mvc => mvc.AddLogViewer())
 	.WithLogging(c => {
 		c.WriteToConsoleAsJson = true;
 		c.FilterCategoryPrefix = new string[] {
@@ -24,7 +26,18 @@ var infra = WebApplication.CreateBuilder(args)
 		bld.AddRepo<IDataRepo, DataRepo>();
 	});
 
+	infra.AddJobs((bld) => {
+		bld.AddCronJob<TestJob>((cron) => cron.EveryMinute(5));
+		}
+						, cfg => {
+							cfg.UseLocalQueue = true;
+							cfg.DisableAutomaticRestart = true;
+							cfg.QueueName = "test";
+							cfg.UseSqlServer = true;
+							cfg.ConnectString = infra.Configuration["ConnectionStrings:ConnectionString"];
+							cfg.DbName = $"jobs-test";
 
+						});
 
 infra.Services.AddSingleton<IDataMessageService, DataMessageService>();
 
