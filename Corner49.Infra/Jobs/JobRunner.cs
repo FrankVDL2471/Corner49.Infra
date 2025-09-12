@@ -49,7 +49,7 @@ namespace Corner49.Infra.Jobs {
 
 
 		[DisplayName("{0}")]
-		[AutomaticRetry(OnAttemptsExceeded = AttemptsExceededAction.Delete, Attempts = 3)]
+		[AutomaticRetry(OnAttemptsExceeded = AttemptsExceededAction.Fail, Attempts = 0, LogEvents = true)]
 		public async Task Run(string name, Dictionary<string, string>? args = null, CancellationToken cancellationToken = default) {
 			string fullName = name;
 			if (args != null) {

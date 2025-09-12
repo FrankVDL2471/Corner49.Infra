@@ -20,6 +20,7 @@
 
 		public JobConfig() {
 			this.EnableDashboard = true;
+			this.DisableAutomaticRestart = true;
 		}
 
 		public string ConnectString { get; set; }

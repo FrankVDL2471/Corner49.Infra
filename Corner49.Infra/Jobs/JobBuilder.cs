@@ -11,7 +11,7 @@ namespace Corner49.Infra.Jobs {
 	public class JobBuilder {
 
 		private readonly IServiceCollection _services;
-		private readonly Hangfire.Azure.CosmosDbStorage _storage;
+		private readonly Hangfire.Azure.CosmosDbStorage? _storage;
 		private readonly JobConfig _config;
 
 		public JobBuilder(IServiceCollection services,  JobConfig config) {
@@ -31,7 +31,7 @@ namespace Corner49.Infra.Jobs {
 					.UseIgnoredAssemblyVersionTypeResolver()
 					.UseSimpleAssemblyNameTypeSerializer();
 
-				services.AddHangfire(x => x.UseSqlServerStorage(bld.ToString()));
+				services.AddHangfire(x => x.UseSqlServerStorage(bld.ToString())  );
 			} else {
 				string? url = CosmosDBHelper.GetUrl(config.ConnectString);
 				string? authSecret = CosmosDBHelper.GetAuthSecret(config.ConnectString);
@@ -78,7 +78,7 @@ namespace Corner49.Infra.Jobs {
 			opt.TimeZone = TimeZoneInfo.Local;
 
 			string queue =  _config.UseLocalQueue ? System.Environment.MachineName.ToLower() :  _config.QueueName ?? "default";
-			RecurringJob.AddOrUpdate<T>(id, queue, (job) => job.Execute(null, default), bld.ToString(), opt );
+			RecurringJob.AddOrUpdate<T>(id, queue, (job) => job.Run(job.GetType().Name, null, default), bld.ToString(), opt );
 		}
 
 
