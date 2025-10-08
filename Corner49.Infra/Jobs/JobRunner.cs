@@ -40,11 +40,11 @@ namespace Corner49.Infra.Jobs {
 
 			try {
 				if (queue == null) {
-					return _jobClient.Enqueue(() => Run(name, args, cancellationToken));
+					this.Id =  _jobClient.Enqueue(() => Run(name, args, cancellationToken));
 				} else {
-					string id = _jobClient.Enqueue(queue, () => Run(name, args, cancellationToken));
-					return $"{queue}:{id}";
+					this.Id = _jobClient.Enqueue(queue, () => Run(name, args, cancellationToken));
 				}
+				return this.Id;
 			} catch (Exception err) {
 				_logger.LogError(err, $"StartJob {name} failed : {err.Message}");
 				return "ERROR: " + err.Message;
@@ -59,7 +59,6 @@ namespace Corner49.Infra.Jobs {
 			if (args != null) {
 				fullName += "(" + string.Join(", ", args.Select(c => $"{c.Key}={c.Value}")) + ")";
 			}
-
 
 			try {
 				await Execute(args, cancellationToken);
