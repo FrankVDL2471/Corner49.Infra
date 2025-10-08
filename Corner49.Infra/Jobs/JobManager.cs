@@ -1,6 +1,5 @@
 ﻿using Hangfire;
 using Hangfire.Storage;
-using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,6 +10,7 @@ namespace Corner49.Infra.Jobs {
 
 		string StartJob<T>(Dictionary<string, string>? args = null, string? queueName = null) where T : IJobRunner;
 
+		string GetJobStatus(string jobId);
 	}
 
 	public class JobManager : IHostedService, IJobManager {
