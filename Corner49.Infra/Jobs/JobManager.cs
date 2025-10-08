@@ -3,6 +3,8 @@ using Hangfire.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace Corner49.Infra.Jobs {
 
@@ -11,6 +13,8 @@ namespace Corner49.Infra.Jobs {
 		string StartJob<T>(Dictionary<string, string>? args = null, string? queueName = null) where T : IJobRunner;
 
 		string GetJobStatus(string jobId);
+
+		IEnumerable<JobInfo> GetJobs();
 	}
 
 	public class JobManager : IHostedService, IJobManager {
@@ -69,10 +73,64 @@ namespace Corner49.Infra.Jobs {
 			}
 		}
 
+		public IEnumerable<JobInfo> GetJobs() {
+			var api = JobStorage.Current.GetMonitoringApi();
+
+			//foreach (var queue in api.Queues()) {
+			//	foreach (var job in api.EnqueuedJobs(queue.Name, 0, (int)api.EnqueuedCount(queue.Name))) {
+			//		if (job.Value?.InvocationData == null) continue;
+			//		var flds = JsonSerializer.Deserialize<string[]>(job.Value.InvocationData.Arguments);
+
+			//		yield return new JobInfo {
+			//			Id = job.Key,
+			//			Type = job.Value.InvocationData.Type,
+			//			Status = "Pending",
+			//			Name = flds?.Length > 0 ? flds[0].TrimStart('"').TrimEnd('"') : null,
+			//			Args = flds?.Length > 1 ? JsonSerializer.Deserialize<Dictionary<string, string>>(flds[1]) : null
+			//		};
+			//	}
+			//}
+
+			foreach (var job in api.ProcessingJobs(0, (int)api.ProcessingCount())) {
+				var flds = JsonSerializer.Deserialize<string[]>(job.Value.InvocationData.Arguments);
+
+				yield return new JobInfo {
+					Id = job.Key,
+					Type = job.Value.InvocationData.Type,
+					Status = job.Value.InProcessingState ? "Processing" : "Pending",
+					Name = ((flds != null) && (flds?.Length > 0) && (flds[0] != null)) ? flds[0].TrimStart('"').TrimEnd('"') : null,
+					Args = ((flds != null) && (flds?.Length > 1) && (flds[1] != null)) ? JsonSerializer.Deserialize<Dictionary<string, string>>(flds[1]) : null
+				};
+			}
+			foreach (var job in api.FailedJobs(0, (int)api.FailedCount())) {
+				if (job.Value?.InvocationData == null) continue;
+				var flds = JsonSerializer.Deserialize<string[]>(job.Value.InvocationData.Arguments);
+
+				yield return new JobInfo {
+					Id = job.Key,
+					Type = job.Value.InvocationData.Type,
+					Status = "Failed",
+					Name = ((flds != null) && (flds?.Length > 0) && (flds[0] != null)) ? flds[0].TrimStart('"').TrimEnd('"') : null,
+					Args = ((flds != null) && (flds?.Length > 1) && (flds[1] != null)) ? JsonSerializer.Deserialize<Dictionary<string, string>>(flds[1]) : null
+				};
+			}
+
+
+
+		}
+
+
 		public string GetJobStatus(string jobId) {
 			IStorageConnection connection = JobStorage.Current.GetConnection();
 			JobData jobData = connection.GetJobData(jobId);
 			return jobData.State;
+
+
+
+
 		}
+
+
+
 	}
 }

@@ -35,7 +35,7 @@ var infra = WebApplication.CreateBuilder(args)
 							cfg.QueueName = "test";
 							cfg.UseSqlServer = true;
 							cfg.ConnectString = infra.Configuration["ConnectionStrings:ConnectionString"];
-							cfg.DbName = $"jobs-test";
+							cfg.DbName = $"jobs-dev";
 
 						});
 
