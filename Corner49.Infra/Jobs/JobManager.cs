@@ -1,4 +1,5 @@
 ﻿using Hangfire;
+using Hangfire.Storage;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -67,6 +68,12 @@ namespace Corner49.Infra.Jobs {
 				_logger.LogError(err, $"StartJob {typeof(T).Name} failed : {err.Message}");
 				return "ERROR: StartJob failed, " + err.Message;
 			}
+		}
+
+		public string GetJobStatus(string jobId) {
+			IStorageConnection connection = JobStorage.Current.GetConnection();
+			JobData jobData = connection.GetJobData(jobId);
+			return jobData.State;
 		}
 	}
 }
