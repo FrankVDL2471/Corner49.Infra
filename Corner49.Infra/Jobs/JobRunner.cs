@@ -8,6 +8,8 @@ namespace Corner49.Infra.Jobs {
 
 	public interface IJobRunner {
 
+		string? Id { get; set; }
+
 		string StartJob(Dictionary<string, string>? args = null, string? queue = null, CancellationToken cancellationToken = default);
 	}
 
@@ -26,6 +28,8 @@ namespace Corner49.Infra.Jobs {
 		}
 
 		public IServiceProvider Services => _serviceProvider;
+
+		public string? Id { get; set; }
 
 		public string StartJob(Dictionary<string, string>? args = null, string? queue = null, CancellationToken cancellationToken = default) {
 			string name = GetType().Name;

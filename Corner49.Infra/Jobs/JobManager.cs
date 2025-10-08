@@ -61,7 +61,8 @@ namespace Corner49.Infra.Jobs {
 				}
 
 
-				return job.StartJob(args, nm);
+				job.Id = job.StartJob(args, nm);
+				return job.Id;
 			} catch (Exception err) {
 				_logger.LogError(err, $"StartJob {typeof(T).Name} failed : {err.Message}");
 				return "ERROR: StartJob failed, " + err.Message;
