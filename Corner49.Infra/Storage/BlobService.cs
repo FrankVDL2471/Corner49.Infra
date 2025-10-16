@@ -14,7 +14,7 @@ namespace Corner49.Infra.Storage {
 
 		Task<Stream?> Read(string containerName, string name);
 
-		Task<Stream?> Write(string containerName, string name);
+		Task<Stream?> Write(string containerName, string name, string? contentType = null, Dictionary<string, string>? metaData = null);
 
 		Task<string> Upload(string containerName, IFormFile file, string? name = null, Dictionary<string, string>? metaData = null);
 		Task<string> Upload(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null);
@@ -110,9 +110,19 @@ namespace Corner49.Infra.Storage {
 			return await client.OpenReadAsync();
 		}
 
-		public async Task<Stream?> Write(string containerName, string name) {
+		public async Task<Stream?> Write(string containerName, string name, string? contentType = null, Dictionary<string, string>? metaData = null) {
 			var container = await GetContainer(containerName);
 			var client = container.GetBlobClient(name);
+
+			if (!string.IsNullOrEmpty(contentType)) {
+				var headers = new Azure.Storage.Blobs.Models.BlobHttpHeaders();
+				headers.ContentType = contentType;
+				await client.SetHttpHeadersAsync(headers);
+			}
+			if (metaData != null) {
+				await client.SetMetadataAsync(metaData);
+			}
+
 			return await client.OpenWriteAsync(true);
 		}
 
