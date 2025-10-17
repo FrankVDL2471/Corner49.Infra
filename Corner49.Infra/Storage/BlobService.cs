@@ -2,7 +2,6 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.Extensions.Configuration;
 using System.Text;
 
@@ -18,22 +17,22 @@ namespace Corner49.Infra.Storage {
 
 		Task<bool> SetMeta(string containerName, string name, string? contentType = null, Dictionary<string, string>? metaData = null);
 
-		Task<string> Upload(string containerName, IFormFile file, string? name = null, Dictionary<string, string>? metaData = null);
-		Task<string> Upload(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null);
-		Task<string> Upload(string containerName, string name, byte[] data, string? contentType = null, Dictionary<string, string>? metaData = null);
-		Task<string> UploadBase64(string containerName, string name, string data, string? contentType = null, Dictionary<string, string>? metaData = null);
+		Task<string?> Upload(string containerName, IFormFile file, string? name = null, Dictionary<string, string>? metaData = null);
+		Task<string?> Upload(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null);
+		Task<string?> Upload(string containerName, string name, byte[] data, string? contentType = null, Dictionary<string, string>? metaData = null);
+		Task<string?> UploadBase64(string containerName, string name, string data, string? contentType = null, Dictionary<string, string>? metaData = null);
 
-		Task<string> Append(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null);
+		Task<string?> Append(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null);
 
 		Task<bool> Delete(string containerName, string name);
 
-		Task<string> GetFile(string containerName, string name, Stream target);
-		Task<string> GetFileInBase64(string containerName, string name);
+		Task<string?> GetFile(string containerName, string name, Stream target);
+		Task<string?> GetFileInBase64(string containerName, string name);
 
 		Task<Stream?> DownloadFile(string containerName, string name, CancellationToken cancellationToken = default);
 		Task<string?> MoveFile(string sourceContainer, string sourceName, string targetContainer, string targetName);
-		Task<IEnumerable<string>> GetFiles(string containerName);
-		string GetCDN(string containName, string name);
+		Task<IEnumerable<string>?> GetFiles(string containerName);
+		string? GetCDN(string containName, string name);
 	}
 
 	public class BlobService : IBlobService {
@@ -53,7 +52,7 @@ namespace Corner49.Infra.Storage {
 
 		private readonly List<string> _containers = new List<string>();
 
-		public async Task<BlobContainerClient> GetContainer(string containerName) {
+		public async Task<BlobContainerClient?> GetContainer(string containerName, bool createIfNotExists) {
 			string nm = FormatContainerName(containerName);
 
 			BlobServiceClient srv = new BlobServiceClient(_connectionString);
@@ -62,35 +61,43 @@ namespace Corner49.Infra.Storage {
 				return new BlobContainerClient(_connectionString, nm);
 			}
 
-			try {
-				// Create the container
-				BlobContainerClient container = await srv.CreateBlobContainerAsync(nm, Azure.Storage.Blobs.Models.PublicAccessType.Blob);
-				if (await container.ExistsAsync()) {
-					Console.WriteLine("Created container {0}", container.Name);
-					_containers.Add(nm);
-					return container;
+			if (createIfNotExists) {
+				try {
+					// Create the container
+					BlobContainerClient container = await srv.CreateBlobContainerAsync(nm, Azure.Storage.Blobs.Models.PublicAccessType.Blob);
+					if (await container.ExistsAsync()) {
+						Console.WriteLine("Created container {0}", container.Name);
+						_containers.Add(nm);
+						return container;
+					}
+				} catch (RequestFailedException e) {
+					Console.WriteLine("HTTP error code {0}: {1}", e.Status, e.ErrorCode);
+					Console.WriteLine(e.Message);
 				}
-			} catch (RequestFailedException e) {
-				Console.WriteLine("HTTP error code {0}: {1}", e.Status, e.ErrorCode);
-				Console.WriteLine(e.Message);
 			}
-
-
-			BlobContainerClient client = new BlobContainerClient(_connectionString, nm);
-			_containers.Add(nm);
-			return client;
+			var client = new BlobContainerClient(_connectionString, nm);
+			if (_containers.Contains(nm)) {
+				return client;
+			}
+			if (await client.ExistsAsync()) {
+				_containers.Add(nm);
+				return client;
+			}
+			return null;
 		}
 
 
-		
-		
+
+
 
 
 		public async Task<IList<string>> GetBlobNames(string containerName) {
 			List<string> nms = new List<string>();
-			var client = await GetContainer(containerName);
-			await foreach (var blob in client.GetBlobsAsync()) {
-				nms.Add(blob.Name);
+			var client = await GetContainer(containerName, false);
+			if (client != null) {
+				await foreach (var blob in client.GetBlobsAsync()) {
+					nms.Add(blob.Name);
+				}
 			}
 			return nms;
 		}
@@ -99,21 +106,34 @@ namespace Corner49.Infra.Storage {
 
 
 		public async Task<bool> Exists(string containerName, string name) {
-			var container = await this.GetContainer(containerName);
-			var client = container.GetBlobClient(name);
-			return await client.ExistsAsync();
+			string nm = FormatContainerName(containerName);
+
+			BlobServiceClient srv = new BlobServiceClient(_connectionString);
+			var client = new BlobContainerClient(_connectionString, nm);
+
+			if (!_containers.Contains(nm)) {
+				if (!await client.ExistsAsync()) return false;
+			}
+
+			var file = client.GetBlobClient(name);
+			return await file.ExistsAsync();
 		}
 
 
 		public async Task<Stream?> Read(string containerName, string name) {
-			var container = await GetContainer(containerName);
+			var container = await GetContainer(containerName, false);
+			if (container == null) return null;
+
 			var client = container.GetBlobClient(name);
 			if (!await client.ExistsAsync()) return null;
 			return await client.OpenReadAsync();
+			
 		}
 
 		public async Task<bool> SetMeta(string containerName, string name, string? contentType = null, Dictionary<string, string>? metaData = null) {
-			var container = await GetContainer(containerName);
+			var container = await GetContainer(containerName, false);
+			if (container == null) return false;
+
 			var client = container.GetBlobClient(name);
 			if (await client.ExistsAsync()) {
 				if (!string.IsNullOrEmpty(contentType)) {
@@ -131,9 +151,10 @@ namespace Corner49.Infra.Storage {
 
 
 		public async Task<Stream?> Write(string containerName, string name, string? contentType = null, Dictionary<string, string>? metaData = null) {
-			var container = await GetContainer(containerName);
-			var client = container.GetBlobClient(name);
+			var container = await GetContainer(containerName, true);
+			if (container == null) return null;
 
+			var client = container.GetBlobClient(name);
 			if (!string.IsNullOrEmpty(contentType)) {
 				var headers = new Azure.Storage.Blobs.Models.BlobHttpHeaders();
 				headers.ContentType = contentType;
@@ -146,8 +167,9 @@ namespace Corner49.Infra.Storage {
 			return await client.OpenWriteAsync(true);
 		}
 
-		public async Task<string> Upload(string containerName, IFormFile file, string? name = null, Dictionary<string, string>? metaData = null) {
-			var container = await GetContainer(containerName);
+		public async Task<string?> Upload(string containerName, IFormFile file, string? name = null, Dictionary<string, string>? metaData = null) {
+			var container = await GetContainer(containerName, true);
+			if (container == null) return null;
 
 			string blobName = name ?? file.FileName;
 			var client = container.GetBlobClient(blobName);
@@ -171,8 +193,9 @@ namespace Corner49.Infra.Storage {
 		}
 
 
-		public async Task<string> Upload(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null) {
-			var container = await GetContainer(containerName);
+		public async Task<string?> Upload(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null) {
+			var container = await GetContainer(containerName, true);
+			if (container == null) return null;	
 
 			var client = container.GetBlobClient(name);
 			await client.DeleteIfExistsAsync();
@@ -191,8 +214,9 @@ namespace Corner49.Infra.Storage {
 			return GetCDN(container.Name, name);
 		}
 
-		public async Task<string> Upload(string containerName, string name, byte[] data, string? contentType = null, Dictionary<string, string>? metaData = null) {
-			var container = await GetContainer(containerName);
+		public async Task<string?> Upload(string containerName, string name, byte[] data, string? contentType = null, Dictionary<string, string>? metaData = null) {
+			var container = await GetContainer(containerName, true);
+			if (container == null) return null;
 
 			var client = container.GetBlobClient(name);
 			await client.DeleteIfExistsAsync();
@@ -213,14 +237,15 @@ namespace Corner49.Infra.Storage {
 		}
 
 
-		public Task<string> UploadBase64(string containerName, string name, string data, string? contentType = null, Dictionary<string, string>? metaData = null) {
+		public Task<string?> UploadBase64(string containerName, string name, string data, string? contentType = null, Dictionary<string, string>? metaData = null) {
 			byte[] buff = Convert.FromBase64String(data);
 			return this.Upload(containerName, name, buff, contentType);
 		}
 
 
-		public async Task<string> Append(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null) {
-			var container = await GetContainer(containerName);
+		public async Task<string?> Append(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null) {
+			var container = await GetContainer(containerName, true);
+			if (container == null) return null;
 
 
 			AppendBlobClient client = container.GetAppendBlobClient(name);
@@ -244,37 +269,42 @@ namespace Corner49.Infra.Storage {
 
 
 		public async Task<bool> Delete(string containerName, string name) {
-			var container = await GetContainer(containerName);
+			var container = await GetContainer(containerName, false);
+			if (container == null) return false;
+
 			var client = container.GetBlobClient(name);
 			return await client.DeleteIfExistsAsync(Azure.Storage.Blobs.Models.DeleteSnapshotsOption.IncludeSnapshots);
 		}
 
-		public async Task<string> GetFile(string containerName, string name, Stream target) {
-			var container = await GetContainer(containerName);
-			var client = container.GetBlobClient(name);
+		public async Task<string?> GetFile(string containerName, string name, Stream target) {
+			var container = await GetContainer(containerName, false);
+			if (container == null) return null;
 
+			var client = container.GetBlobClient(name);
 			if (await client.ExistsAsync()) {
 				var response = await client.DownloadToAsync(target);
 				target.Position = 0;
 				return response.Headers.ContentType;
 			}
-			return string.Empty;
+			return null;
 		}
 
 
-		public async Task<string> GetFileInBase64(string containerName, string name) {
-			var container = await GetContainer(containerName);
-			var client = container.GetBlobClient(name);
+		public async Task<string?> GetFileInBase64(string containerName, string name) {
+			var container = await GetContainer(containerName, false);
+			if (container == null) return null;
 
+			var client = container.GetBlobClient(name);
 			if (await client.ExistsAsync()) {
 				var response = await client.DownloadContentAsync();
 				return Convert.ToBase64String(response.Value.Content);
 			}
-			return string.Empty;
+			return null;
 		}
 
 		public async Task<Stream?> DownloadFile(string containerName, string name, CancellationToken cancellationToken = default) {
-			var container = await GetContainer(containerName);
+			var container = await GetContainer(containerName,false);
+			if (container == null) return null;
 			var client = container.GetBlobClient(name);
 
 			if (!await client.ExistsAsync()) return null;
@@ -288,13 +318,14 @@ namespace Corner49.Infra.Storage {
 
 
 		public async Task<string?> MoveFile(string sourceContainer, string sourceName, string targetContainer, string targetName) {
-			var source = await GetContainer(sourceContainer);
+			var source = await GetContainer(sourceContainer, false);
+			if (source == null) return null;
 			var sourceClient = source.GetBlobClient(sourceName);
 
 			if (!await sourceClient.ExistsAsync()) return null;
 			
 
-			var target = await GetContainer(targetContainer);
+			var target = await GetContainer(targetContainer, true);
 			var targetClient = target.GetBlobClient(targetName);
 			await targetClient.DeleteIfExistsAsync();
 
@@ -314,8 +345,9 @@ namespace Corner49.Infra.Storage {
 
 
 
-		public async Task<IEnumerable<string>> GetFiles(string containerName) {
-			var container = await GetContainer(containerName);
+		public async Task<IEnumerable<string>?> GetFiles(string containerName) {
+			var container = await GetContainer(containerName, false);
+			if (container == null) return null;
 
 			return container.GetBlobs().Select(b => b.Name);
 		}
