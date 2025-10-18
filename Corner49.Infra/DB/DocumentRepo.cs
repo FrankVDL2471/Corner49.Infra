@@ -504,11 +504,76 @@ namespace Corner49.Infra.DB {
 					foreach (var resp in response) {
 						if (resp is JsonElement el) {
 							yield return el;
-						}						
+						}
 					}
 					if (cancelToken.IsCancellationRequested) break;
 				}
 			}
+		}
+
+		public async Task BulkInsert(IAsyncEnumerable<T> items, Func<T, string> getPartitionKey) {
+			var container = this.Container;
+
+			List<Task> tasks = new List<Task>();
+			await foreach (var itm in items) {
+				tasks.Add(container.CreateItemAsync(itm, new PartitionKey(getPartitionKey(itm)))
+						.ContinueWith(itemResponse => {
+							if (!itemResponse.IsCompletedSuccessfully) {
+								AggregateException innerExceptions = itemResponse.Exception.Flatten();
+								if (innerExceptions.InnerExceptions.FirstOrDefault(innerEx => innerEx is CosmosException) is CosmosException cosmosException) {
+									Console.WriteLine($"Received {cosmosException.StatusCode} ({cosmosException.Message}).");
+								} else {
+									Console.WriteLine($"Exception {innerExceptions.InnerExceptions.FirstOrDefault()}.");
+								}
+							}
+						}));
+			}
+
+			await Task.WhenAll(tasks);
+		}
+
+		public async Task BulkDelete(IAsyncEnumerable<T> items, Func<T, string> getId, Func<T, string> getPartitionKey) {
+			var container = this.Container;
+
+			List<Task> tasks = new List<Task>();
+			await foreach (var itm in items) {
+				tasks.Add(container.DeleteItemAsync<T>(getId(itm), new PartitionKey(getPartitionKey(itm)))
+						.ContinueWith(itemResponse => {
+							if (!itemResponse.IsCompletedSuccessfully) {
+								AggregateException innerExceptions = itemResponse.Exception.Flatten();
+								if (innerExceptions.InnerExceptions.FirstOrDefault(innerEx => innerEx is CosmosException) is CosmosException cosmosException) {
+									Console.WriteLine($"Received {cosmosException.StatusCode} ({cosmosException.Message}).");
+								} else {
+									Console.WriteLine($"Exception {innerExceptions.InnerExceptions.FirstOrDefault()}.");
+								}
+							}
+						}));
+			}
+
+			await Task.WhenAll(tasks);
+		}
+
+		public async Task BulkUpdate(IAsyncEnumerable<T> items, Func<T, string> getId, Func<T, string> getPartitionKey, Func<T, T>? update = null) {
+			var container = this.Container;
+
+			List<Task> tasks = new List<Task>();
+			await foreach (var itm in items) {
+				T item = update == null ? itm : update(itm);
+
+				tasks.Add(container.ReplaceItemAsync(item, getId(itm), new PartitionKey(getPartitionKey(itm)))
+						.ContinueWith(itemResponse => {
+							if (!itemResponse.IsCompletedSuccessfully) {
+								AggregateException innerExceptions = itemResponse.Exception.Flatten();
+								if (innerExceptions.InnerExceptions.FirstOrDefault(innerEx => innerEx is CosmosException) is CosmosException cosmosException) {
+									Console.WriteLine($"Received {cosmosException.StatusCode} ({cosmosException.Message}).");
+								} else {
+									Console.WriteLine($"Exception {innerExceptions.InnerExceptions.FirstOrDefault()}.");
+								}
+							}
+						}));
+			}
+
+			await Task.WhenAll(tasks);
 		}
 
 
