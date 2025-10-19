@@ -3,6 +3,7 @@ using Corner49.DB.Tools;
 using Corner49.Infra.Tools;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -89,14 +90,30 @@ namespace Corner49.Infra.DB {
 		}
 
 		public async Task Init() {
-			var dbResp = await _client.CreateDatabaseIfNotExistsAsync(_dbName);
-			if (dbResp.Database == null) {
-				throw new DocumentException($"Database '{_dbName}' not created");
+			for (int retry = 0; retry <= 5; retry++) {
+				try {
+					var dbResp = await _client.CreateDatabaseIfNotExistsAsync(_dbName);
+					if (dbResp.Database == null) {
+						throw new DocumentException($"Database '{_dbName}' not created");
+					}
+
+					var resp = await dbResp.Database.DefineContainer(_containerName, "/" + _paritionKey)
+						.WithDefaultTimeToLive(-1)
+						.CreateIfNotExistsAsync();
+
+
+				} catch (CosmosException err) {
+					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(10));
+					} else {
+						throw new DocumentException($"Init({_dbName},{_containerName}) failed", err);
+					}
+				} catch (Exception ex) {
+					throw new DocumentException($"Init({_dbName},{_containerName}) failed", ex);
+				}
 			}
 
-			var resp = await dbResp.Database.DefineContainer(_containerName, "/" + _paritionKey)
-				.WithDefaultTimeToLive(-1)
-				.CreateIfNotExistsAsync();
+
 		}
 
 
