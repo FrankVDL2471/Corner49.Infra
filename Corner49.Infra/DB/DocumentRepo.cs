@@ -101,7 +101,7 @@ namespace Corner49.Infra.DB {
 						.WithDefaultTimeToLive(-1)
 						.CreateIfNotExistsAsync();
 
-
+					return;
 				} catch (CosmosException err) {
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
 						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(10));
@@ -112,8 +112,6 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"Init({_dbName},{_containerName}) failed", ex);
 				}
 			}
-
-
 		}
 
 
