@@ -56,10 +56,10 @@ namespace Corner49.Infra.ServiceBus {
 			try {
 				var msg = CreateMessage(cmd);
 				if (cmd.Timestamp != null && cmd.Timestamp > DateTime.UtcNow) {
-					_logger.LogInformation($"Send delayed message {msg.MessageId}:{cmd.Name} at {cmd.Timestamp.Value.LocalDateTime} on {sender.EntityPath}");
+					//_logger.LogInformation($"Send delayed message {msg.MessageId}:{cmd.Name} at {cmd.Timestamp.Value.LocalDateTime} on {sender.EntityPath}");
 					await sender.ScheduleMessageAsync(msg, cmd.Timestamp.Value);
 				} else {
-					_logger.LogInformation($"Send message {msg.MessageId}:{cmd.Name} on {sender.EntityPath}");
+					//_logger.LogInformation($"Send message {msg.MessageId}:{cmd.Name} on {sender.EntityPath}");
 					await sender.SendMessageAsync(msg);
 				}
 			} finally {
