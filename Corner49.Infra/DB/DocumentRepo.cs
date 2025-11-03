@@ -453,11 +453,19 @@ namespace Corner49.Infra.DB {
 			QueryDefinition def = new QueryDefinition(sql);
 
 
-			using (FeedIterator<M> FeedIterator = this.Container.GetItemQueryIterator<M>(def)) {
-				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					foreach (var item in await FeedIterator.ReadNextAsync(cancelToken)) {
+			using (FeedIterator<M> feedIterator = this.Container.GetItemQueryIterator<M>(def)) {
+				while (feedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
+					FeedResponse<M> response = await feedIterator.ReadNextAsync(cancelToken);
+
+					if (response.StatusCode == HttpStatusCode.TooManyRequests) {
+						await Task.Delay(TimeSpan.FromSeconds(5));
+						response = await feedIterator.ReadNextAsync(cancelToken);
+					}
+
+					foreach (var item in response) {
 						yield return item;
 					}
+
 				}
 			}
 		}
@@ -600,8 +608,8 @@ namespace Corner49.Infra.DB {
 									}
 								}
 							}));
-				} catch (Exception err) { 
-				}	
+				} catch (Exception err) {
+				}
 			}
 
 			await Task.WhenAll(tasks);
