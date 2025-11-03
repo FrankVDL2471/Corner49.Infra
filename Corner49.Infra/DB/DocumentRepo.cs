@@ -452,32 +452,14 @@ namespace Corner49.Infra.DB {
 		public async IAsyncEnumerable<M> ExecSQL<M>(string sql, [EnumeratorCancellation] CancellationToken cancelToken = default) {
 			QueryDefinition def = new QueryDefinition(sql);
 
+
 			using (FeedIterator<M> FeedIterator = this.Container.GetItemQueryIterator<M>(def)) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					IEnumerable<M>? items = null;
-
-					for (int i = 0; i < 5; i++) {
-						try {
-							items = await FeedIterator.ReadNextAsync(cancelToken);
-							break;
-						} catch (CosmosException err) {
-							if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
-								await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
-							} else {
-								throw;
-							}
-						}
+					foreach (var item in await FeedIterator.ReadNextAsync(cancelToken)) {
+						yield return item;
 					}
-
-					if (items != null) {
-						foreach (var item in items) {
-							yield return item;
-						}
-					}
-
 				}
 			}
-
 		}
 
 		public async Task<string?> ReadSQL(string sql, Func<T, Task<bool>> onRead, string? partitionKey = null, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
@@ -618,8 +600,8 @@ namespace Corner49.Infra.DB {
 									}
 								}
 							}));
-				} catch (Exception err) {
-				}
+				} catch (Exception err) { 
+				}	
 			}
 
 			await Task.WhenAll(tasks);
