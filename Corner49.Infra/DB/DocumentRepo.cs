@@ -457,7 +457,7 @@ namespace Corner49.Infra.DB {
 				while (feedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
 					FeedResponse<M> response = await feedIterator.ReadNextAsync(cancelToken);
 
-					if (response.StatusCode == HttpStatusCode.TooManyRequests) {
+					while (response.StatusCode == HttpStatusCode.TooManyRequests) {
 						await Task.Delay(TimeSpan.FromSeconds(5));
 						response = await feedIterator.ReadNextAsync(cancelToken);
 					}
