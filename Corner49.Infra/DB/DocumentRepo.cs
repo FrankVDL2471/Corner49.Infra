@@ -37,6 +37,8 @@ namespace Corner49.Infra.DB {
 		Task<QueryResult<T>> Query(string? partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
 
 		IAsyncEnumerable<M> ExecSQL<M>(string sql, CancellationToken cancelToken = default);
+		IAsyncEnumerable<M> ExecSQL<M>(string sql, string partitionKey, int? maxItemCount = null, CancellationToken cancelToken = default);
+
 		Task<string?> ReadSQL(string sql, Func<T, Task<bool>> onRead, string? partitionKey = null, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
 		Task<int> CountSQL(string where, System.Threading.CancellationToken cancelToken = default);
 
@@ -465,10 +467,34 @@ namespace Corner49.Infra.DB {
 					foreach (var item in response) {
 						yield return item;
 					}
-
 				}
 			}
 		}
+
+		public async IAsyncEnumerable<M> ExecSQL<M>(string sql, string partitionKey, int? maxItemCount = null, [EnumeratorCancellation] CancellationToken cancelToken = default) {
+			QueryDefinition def = new QueryDefinition(sql);
+
+			QueryRequestOptions options = new QueryRequestOptions();
+			if (partitionKey != null) options.PartitionKey = new PartitionKey(partitionKey);
+			if (maxItemCount != null) options.MaxItemCount = maxItemCount;
+
+
+			using (FeedIterator<M> feedIterator = this.Container.GetItemQueryIterator<M>(def, null, options)) {
+				while (feedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
+					FeedResponse<M> response = await feedIterator.ReadNextAsync(cancelToken);
+
+					while (response.StatusCode == HttpStatusCode.TooManyRequests) {
+						await Task.Delay(TimeSpan.FromSeconds(5));
+						response = await feedIterator.ReadNextAsync(cancelToken);
+					}
+
+					foreach (var item in response) {
+						yield return item;
+					}
+				}
+			}
+		}
+
 
 		public async Task<string?> ReadSQL(string sql, Func<T, Task<bool>> onRead, string? partitionKey = null, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			QueryDefinition def = new QueryDefinition(sql);
