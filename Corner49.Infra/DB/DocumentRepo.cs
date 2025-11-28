@@ -504,6 +504,7 @@ namespace Corner49.Infra.DB {
 			if (maxItemCount != null) options.MaxItemCount = maxItemCount;
 
 			string? token = Base64.Decode(continuationToken);
+			string? nextToken = null;
 			bool run = true;
 			int cnt = 0;
 			using (FeedIterator<T> FeedIterator = this.Container.GetItemQueryIterator<T>(def, token, options)) {
@@ -514,11 +515,11 @@ namespace Corner49.Infra.DB {
 						run = await onRead(item);
 						if ((!run) || (cancelToken.IsCancellationRequested)) break;
 					}
-					token = Base64.Encode(feed.ContinuationToken);
+					nextToken = Base64.Encode(feed.ContinuationToken);
 					if ((maxItemCount != null) && (cnt >= maxItemCount)) run = false;
 				}
 			}
-			return token;
+			return nextToken;
 		}
 
 
