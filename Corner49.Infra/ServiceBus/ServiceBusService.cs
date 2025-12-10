@@ -250,7 +250,7 @@ namespace Corner49.Infra.ServiceBus {
 						if (subscriptionFilter != null) {
 							//Check if filter is changed;
 							var rules = _admin.GetRulesAsync(topicName, subscriptionName);
-							await rules.ForEachAsync(rule => {
+							await Parallel.ForEachAsync(rules, async (rule, ct) => {
 								if (rule.Filter is SqlRuleFilter sql) {
 									if (sql.SqlExpression != subscriptionFilter) {
 										createNewSubscription = true;

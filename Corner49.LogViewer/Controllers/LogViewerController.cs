@@ -29,7 +29,12 @@ namespace Corner49.LogViewer.Controllers {
 			model.Hour = filter.Hour;
 			model.Level = filter.Level;
 			model.Sorting = filter.Sorting;
-			model.Apps = await _reader.GetApps().Select(c => new KeyValuePair<object, string>(c, c)).ToListAsync();
+
+			model.Apps = new List<KeyValuePair<object, string>>();
+			await foreach(var app in _reader.GetApps()) {
+				model.Apps.Add(new KeyValuePair<object, string>(app, app));
+			}
+
 
 
 
