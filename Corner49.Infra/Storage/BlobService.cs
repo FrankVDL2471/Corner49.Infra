@@ -2,6 +2,7 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.Amqp.Framing;
 using Microsoft.Extensions.Configuration;
 using System.Text;
 
@@ -23,6 +24,10 @@ namespace Corner49.Infra.Storage {
 		Task<string?> UploadBase64(string containerName, string name, string data, string? contentType = null, Dictionary<string, string>? metaData = null);
 
 		Task<string?> Append(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null);
+
+
+		Task<string?> CreateText(string containerName, string name);
+		Task<string?> AppendText(string containerName, string name, string text);
 
 		Task<bool> Delete(string containerName, string name);
 
@@ -265,6 +270,48 @@ namespace Corner49.Infra.Storage {
 			return GetCDN(container.Name, name);
 		}
 
+
+		public async Task<string?> CreateText(string containerName, string name) {
+			var container = await GetContainer(containerName, true);
+			if (container == null) return null;
+
+			AppendBlobClient client = container.GetAppendBlobClient(name);
+			await client.CreateIfNotExistsAsync();
+
+			return GetCDN(container.Name, name);
+		}
+
+		public async Task<string?> AppendText(string containerName, string name, string text) {
+			var container = await GetContainer(containerName, false);
+			if (container == null) return null;
+
+			int cnt = 0;
+			string fileName = name;
+			while (true) {
+				AppendBlobClient client = container.GetAppendBlobClient(fileName);
+				var props = await client.GetPropertiesAsync();
+				if (props.Value.BlobCommittedBlockCount >= client.AppendBlobMaxBlocks) {
+					cnt++;
+					fileName += "-part" + cnt;
+					continue;
+				}
+
+
+				using (MemoryStream mem = new MemoryStream()) {
+					using (StreamWriter writer = new StreamWriter(mem, System.Text.Encoding.UTF8, leaveOpen: true)) {
+						await writer.WriteLineAsync(text);
+					}
+					mem.Position = 0;
+
+					await client.AppendBlockAsync(mem);
+				}
+				break;
+			}
+
+
+
+			return GetCDN(container.Name, fileName);
+		}
 
 
 
