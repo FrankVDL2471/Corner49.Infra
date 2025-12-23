@@ -208,6 +208,7 @@ namespace Corner49.Infra {
 			_authSettings.Audience = this.Configuration["Auth0:Audience"];
 			_authSettings.ClientId = this.Configuration["Auth0:ClientId"];
 			_authSettings.ClientSecret = this.Configuration["Auth0:ClientSecret"];
+			_authSettings.ApiIdentifier = this.Configuration["Auth0:ApiIdentifier"];
 
 			if (options != null) options(_authSettings);
 
@@ -216,6 +217,7 @@ namespace Corner49.Infra {
 				cfg.Audience = _authSettings.Audience;
 				cfg.ClientId = _authSettings.ClientId;
 				cfg.ClientSecret = _authSettings.ClientSecret;
+				cfg.ApiIdentifier = _authSettings.ApiIdentifier;
 			});
 
 			if (string.IsNullOrEmpty(_authSettings.Domain)) throw new ArgumentNullException("Domain", "AuthSettings.Domain is not set");
