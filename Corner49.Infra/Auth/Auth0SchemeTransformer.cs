@@ -10,7 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Corner49.Infra.Helpers {
+namespace Corner49.Infra.Auth {
 
 	internal class Auth0SchemeTransformer : IOpenApiDocumentTransformer {
 

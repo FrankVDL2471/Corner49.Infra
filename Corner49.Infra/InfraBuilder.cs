@@ -21,6 +21,7 @@ using Corner49.Infra.Helpers;
 using Corner49.Infra.ApiKey;
 using System.Text.Json;
 using Microsoft.AspNetCore.OpenApi;
+using Corner49.Infra.Auth;
 
 namespace Corner49.Infra {
 	public class InfraBuilder {
@@ -281,7 +282,7 @@ namespace Corner49.Infra {
 
 			_services.AddOpenApi((options) => {
 				if (_auth == "auth0") {
-					options.AddDocumentTransformer<Helpers.Auth0SchemeTransformer>();
+					options.AddDocumentTransformer<Auth0SchemeTransformer>();
 				}
 
 				options.AddDocumentTransformer((doc, context, cancelToken) => {
