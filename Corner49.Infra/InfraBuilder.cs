@@ -57,6 +57,21 @@ namespace Corner49.Infra {
 			Instance = this;
 		}
 
+		public InfraBuilder(IHostApplicationBuilder builder, ConfigurationManager config, string appName) {
+			_builder = builder;
+			_services = _builder.Services;
+			_appName = appName;
+
+			//Internal services
+			_services.AddSingleton<IServiceBusService, ServiceBusService>();
+			_services.AddSingleton<ITelemetryService, TelemetryService>();
+
+
+			Configuration = config;
+			Instance = this;
+		}
+
+
 
 
 		public static InfraBuilder Instance { get; private set; }
