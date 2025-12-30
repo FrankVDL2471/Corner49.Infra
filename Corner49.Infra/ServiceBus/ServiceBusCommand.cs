@@ -51,8 +51,8 @@ namespace Corner49.Infra.ServiceBus {
 		/// Number of messages that still need to be processed
 		/// </summary>
 		public long? MessageCount { get; set; }
-		
-		
+
+
 		public T GetData<T>() where T : class {
 			if (Data == null) return default;
 			return Data.ToObjectFromJson<T>(JsonOptions);
@@ -101,29 +101,30 @@ namespace Corner49.Infra.ServiceBus {
 
 
 		public static ServiceBusCommand GetCommand(ProcessMessageEventArgs arg) {
-			ServiceBusCommand msg = new ServiceBusCommand();
-			msg.Name = arg.Message.Subject;
-			msg.Target = arg.Message.ApplicationProperties.ContainsKey("Target") ? arg.Message.ApplicationProperties["Target"] as string : null;
-			msg.Source = arg.Message.ApplicationProperties.ContainsKey("Source") ? arg.Message.ApplicationProperties["Source"] as string : null;
+			return GetCommand(arg.Message);
+		}
 
-			if (arg.Message.EnqueuedTime != default) {
-				msg.Timestamp = arg.Message.EnqueuedTime;
-			} else if (arg.Message.ApplicationProperties.ContainsKey("Timestamp")) {
-				string ts = (string)arg.Message.ApplicationProperties["Timestamp"];
+		public static ServiceBusCommand GetCommand(ServiceBusReceivedMessage message) {
+			ServiceBusCommand msg = new ServiceBusCommand();
+			msg.Name = message.Subject;
+			msg.Target = message.ApplicationProperties.ContainsKey("Target") ? message.ApplicationProperties["Target"] as string : null;
+			msg.Source = message.ApplicationProperties.ContainsKey("Source") ? message.ApplicationProperties["Source"] as string : null;
+			if (message.EnqueuedTime != default) {
+				msg.Timestamp = message.EnqueuedTime;
+			} else if (message.ApplicationProperties.ContainsKey("Timestamp")) {
+				string ts = (string)message.ApplicationProperties["Timestamp"];
 				long epoch = 0;
 				if (long.TryParse(ts, out epoch)) {
 					msg.Timestamp = DateTimeOffset.FromUnixTimeSeconds(epoch);
 				}
 			}
-
-			if (arg.Message.ApplicationProperties.ContainsKey("DataType")) {
-				string[] dataType = ((string)arg.Message.ApplicationProperties["DataType"]).Split(',');
+			if (message.ApplicationProperties.ContainsKey("DataType")) {
+				string[] dataType = ((string)message.ApplicationProperties["DataType"]).Split(',');
 				msg.DataType = Type.GetType($"{dataType[0]}, {dataType[1]}", false);  //only use class and assembly name, ignore version
 			}
-
-			msg.Data = arg.Message.Body;
-
+			msg.Data = message.Body;
 			return msg;
+
 		}
 	}
 }
