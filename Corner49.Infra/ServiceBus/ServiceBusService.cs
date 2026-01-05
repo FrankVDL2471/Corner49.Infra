@@ -171,12 +171,15 @@ namespace Corner49.Infra.ServiceBus {
 			ServiceBusProcessorOptions opt = new ServiceBusProcessorOptions();
 			opt.MaxConcurrentCalls = options.MaxConcurrentCalls;
 			opt.MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(30);
-			opt.AutoCompleteMessages = true;
+			opt.AutoCompleteMessages = false;
 			opt.ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete;
 			opt.PrefetchCount = options.PrefetchCount;
 			opt.SubQueue = SubQueue.DeadLetter;
 
-			var proc =  _client.CreateProcessor(nm, opt);
+			long count = await this.GetMessageCount(options) ?? 0;
+
+
+			var proc =  _client.CreateProcessor(nm, opt);			
 			proc.ProcessMessageAsync += async (args) => {
 				var sender = _client.CreateSender(nm);
 
@@ -192,14 +195,21 @@ namespace Corner49.Infra.ServiceBus {
 					}					
 				}	
 				await sender.SendMessageAsync(msg);
+				await args.CompleteMessageAsync(args.Message);	
+
+				Interlocked.Decrement(ref count);	
+			};
+			proc.ProcessErrorAsync += (args) => {
+				_logger.LogError(args.Exception, $"ResubmitDeadletterQueue  Failed Error: {args.Exception.Message}");
+				return Task.CompletedTask;
 			};
 
 
 			await proc.StartProcessingAsync();
 
 			while(true) {
-				var cnt = await this.GetMessageCount(options);
-				if (cnt == 0) break;
+				var cnt = Interlocked.Read(ref count);
+				if (cnt <= 0) break;
 				await Task.Delay(500);
 			}
 
