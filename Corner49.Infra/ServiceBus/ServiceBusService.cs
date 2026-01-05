@@ -1,5 +1,6 @@
 ﻿using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -19,6 +20,7 @@ namespace Corner49.Infra.ServiceBus {
 		Task<ServiceBusProcessor> GetSubscription(IServiceBusOptions options);
 
 		ValueTask<bool> DeleteQueue(string? queueName);
+		Task ResubmitDeadletterQueue(IServiceBusOptions options);
 
 
 		Task<ServiceBusProcessor> StartProcessor(IServiceBusOptions options, Func<ProcessMessageEventArgs, Task> processMessage, Func<ProcessErrorEventArgs, Task> processErrors);
@@ -93,7 +95,9 @@ namespace Corner49.Infra.ServiceBus {
 			opt.AutoCompleteMessages = true;
 			opt.ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete;
 			opt.PrefetchCount = options.PrefetchCount;
-
+			if (options.DealLetter) {
+				opt.SubQueue = SubQueue.DeadLetter;
+			}
 			return _client.CreateProcessor(nm, opt);
 		}
 		private async ValueTask<string> GetQueue(string name, TimeSpan? dupplicateDetection = null) {
@@ -161,6 +165,47 @@ namespace Corner49.Infra.ServiceBus {
 		}
 
 
+		public async Task ResubmitDeadletterQueue(IServiceBusOptions options) {
+			var nm = await GetQueue(options.Name, options.DuplicateDetectionWindow);
+
+			ServiceBusProcessorOptions opt = new ServiceBusProcessorOptions();
+			opt.MaxConcurrentCalls = options.MaxConcurrentCalls;
+			opt.MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(30);
+			opt.AutoCompleteMessages = true;
+			opt.ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete;
+			opt.PrefetchCount = options.PrefetchCount;
+			opt.SubQueue = SubQueue.DeadLetter;
+
+			var proc =  _client.CreateProcessor(nm, opt);
+			proc.ProcessMessageAsync += async (args) => {
+				var sender = _client.CreateSender(nm);
+
+				var msg =   new ServiceBusMessage(args.Message.Body);
+				msg.MessageId = args.Message.MessageId;
+				msg.Subject = args.Message.Subject;
+				msg.To = args.Message.To;					
+				foreach(var prop in args.Message.ApplicationProperties) {
+					if (msg.ApplicationProperties.ContainsKey(prop.Key)) {
+						msg.ApplicationProperties[prop.Key] = prop.Value;
+					} else {
+						msg.ApplicationProperties.Add(prop.Key, prop.Value);	
+					}					
+				}	
+				await sender.SendMessageAsync(msg);
+			};
+
+
+			await proc.StartProcessingAsync();
+
+			while(true) {
+				var cnt = await this.GetMessageCount(options);
+				if (cnt == 0) break;
+				await Task.Delay(500);
+			}
+
+			await proc.StopProcessingAsync();
+
+		}
 
 
 		#endregion
