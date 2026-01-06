@@ -1,11 +1,15 @@
-﻿namespace Corner49.Infra.DB {
+﻿using System.Net;
+
+namespace Corner49.Infra.DB {
 	public class DocumentException : System.Exception {
 
 		public DocumentException() : base() { }
 
-		public DocumentException(string message, Exception? innerException = null) : base(message, innerException) { }
+		public DocumentException(string message, Exception? innerException = null, HttpStatusCode? statusCode = null) : base(message, innerException) {
+			this.StatusCode = statusCode;
+		}
 
-
+		public System.Net.HttpStatusCode? StatusCode { get; set; }
 	}
 
 	public class DocumentContainerNotFoundException : DocumentException {
@@ -14,9 +18,6 @@
 
 	}
 
-	
-
-
-
 
 }
+ 

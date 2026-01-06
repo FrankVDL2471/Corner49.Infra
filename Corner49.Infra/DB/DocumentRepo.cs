@@ -182,8 +182,10 @@ namespace Corner49.Infra.DB {
 						return null;
 					} else if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
 						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
+						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
 					} else {
-						throw new DocumentException($"GetItem({partitionId},{itemId}) failed", err);
+						throw new DocumentException($"GetItem({partitionId},{itemId}) failed", err, err.StatusCode);
 					}
 				} catch (Exception ex) {
 					throw new DocumentException($"GetItem({partitionId},{itemId}) failed", ex);
@@ -212,8 +214,10 @@ namespace Corner49.Infra.DB {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
 						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
+						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
 					} else {
-						throw new DocumentException($"AddItem failed", err);
+						throw new DocumentException($"AddItem failed", err, err.StatusCode);
 					}
 				} catch (Exception ex) {
 					throw new DocumentException($"AddItem failed", ex);
@@ -236,8 +240,10 @@ namespace Corner49.Infra.DB {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
 						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
+						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
 					} else {
-						throw new DocumentException($"UpsertItem failed", err);
+						throw new DocumentException($"UpsertItem failed", err, err.StatusCode);
 					}
 				} catch (Exception err) {
 					throw new DocumentException($"UpsertItem failed", err);
@@ -257,8 +263,10 @@ namespace Corner49.Infra.DB {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
 						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
+						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
 					} else {
-						throw new DocumentException($"PatchItem({partitionId},{itemId}) failed", err);
+						throw new DocumentException($"PatchItem({partitionId},{itemId}) failed", err, err.StatusCode);
 					}
 				} catch (Exception err) {
 					throw new DocumentException($"PatchItem({partitionId},{itemId}) failed", err);
