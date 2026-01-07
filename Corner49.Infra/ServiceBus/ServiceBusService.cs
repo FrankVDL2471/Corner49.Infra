@@ -172,7 +172,7 @@ namespace Corner49.Infra.ServiceBus {
 			opt.MaxConcurrentCalls = options.MaxConcurrentCalls;
 			opt.MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(30);
 			opt.AutoCompleteMessages = false;
-			opt.ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete;
+			opt.ReceiveMode = ServiceBusReceiveMode.PeekLock;
 			opt.PrefetchCount = options.PrefetchCount;
 			opt.SubQueue = SubQueue.DeadLetter;
 
