@@ -166,22 +166,23 @@ namespace Corner49.Infra.ServiceBus {
 
 
 		public async Task ResubmitDeadletterQueue(IServiceBusOptions options) {
+			options.DealLetter = true;
+
 			var nm = await GetQueue(options.Name, options.DuplicateDetectionWindow);
 
 			ServiceBusProcessorOptions opt = new ServiceBusProcessorOptions();
 			opt.MaxConcurrentCalls = options.MaxConcurrentCalls;
 			opt.MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(30);
 			opt.AutoCompleteMessages = true;
-			opt.ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete;
+			opt.ReceiveMode = ServiceBusReceiveMode.PeekLock;
 			opt.PrefetchCount = options.PrefetchCount;
 			opt.SubQueue = SubQueue.DeadLetter;
 
 			long count = await this.GetMessageCount(options) ?? 0;
-
+			var sender = _client.CreateSender(nm);
 
 			var proc =  _client.CreateProcessor(nm, opt);			
 			proc.ProcessMessageAsync += async (args) => {
-				var sender = _client.CreateSender(nm);
 
 				var msg =   new ServiceBusMessage(args.Message.Body);
 				msg.MessageId = args.Message.MessageId;
@@ -385,9 +386,10 @@ namespace Corner49.Infra.ServiceBus {
 					if (this.DeveloperMode) {
 						queueName += "." + Environment.MachineName.ToLower();
 						queueName = queueName.Length > 50 ? queueName.Substring(0, 50) : queueName;
-					}
+					}					
+
 					var resp = await _admin.GetQueueRuntimePropertiesAsync(queueName);
-					return resp?.Value?.TotalMessageCount;
+					return options.DealLetter ? resp?.Value?.DeadLetterMessageCount : resp?.Value?.TotalMessageCount;
 				} else {
 					var name = options.SubscriptionName;
 					if (_config.DeveloperMode) {
@@ -395,7 +397,7 @@ namespace Corner49.Infra.ServiceBus {
 						name = name.Length > 50 ? name.Substring(0, 50) : name;
 					}
 					var resp = await _admin.GetSubscriptionRuntimePropertiesAsync(options.Name, name);
-					return resp?.Value?.TotalMessageCount;
+					return options.DealLetter ? resp?.Value?.DeadLetterMessageCount : resp?.Value?.TotalMessageCount;
 				}
 
 			} catch (Exception er) {
