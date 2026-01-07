@@ -171,8 +171,8 @@ namespace Corner49.Infra.ServiceBus {
 			ServiceBusProcessorOptions opt = new ServiceBusProcessorOptions();
 			opt.MaxConcurrentCalls = options.MaxConcurrentCalls;
 			opt.MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(30);
-			opt.AutoCompleteMessages = false;
-			opt.ReceiveMode = ServiceBusReceiveMode.PeekLock;
+			opt.AutoCompleteMessages = true;
+			opt.ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete;
 			opt.PrefetchCount = options.PrefetchCount;
 			opt.SubQueue = SubQueue.DeadLetter;
 
@@ -195,7 +195,6 @@ namespace Corner49.Infra.ServiceBus {
 					}					
 				}	
 				await sender.SendMessageAsync(msg);
-				await args.CompleteMessageAsync(args.Message);	
 
 				Interlocked.Decrement(ref count);	
 			};
