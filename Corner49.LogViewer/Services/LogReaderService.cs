@@ -115,6 +115,9 @@ namespace Corner49.LogViewer.Services {
 								} else if (container.Name == "insights-logs-appserviceconsolelogs") {
 									var msg = JsonSerializer.Deserialize<ConsoleLogMessage>(line, JsonHelper.Options)?.Create();
 									if (msg != null) logs.Add(msg);
+								} else if (container.Name == "insights-logs-functionapplogs") {
+									var msg = JsonSerializer.Deserialize<FunctionLogMessage>(line, JsonHelper.Options)?.Create();
+									if (msg != null) logs.Add(msg);
 								}
 
 
