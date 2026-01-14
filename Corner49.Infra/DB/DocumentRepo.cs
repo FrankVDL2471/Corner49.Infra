@@ -3,6 +3,7 @@ using Corner49.DB.Tools;
 using Corner49.Infra.Tools;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
+using Microsoft.Extensions.FileSystemGlobbing;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Runtime.CompilerServices;
@@ -279,15 +280,33 @@ namespace Corner49.Infra.DB {
 		public async Task<bool> DeleteItem(string partitionId, string itemId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
-			try {
-				var resp = await this.Container.DeleteItemAsync<T>(itemId, new PartitionKey(partitionId));
-				if (resp.StatusCode == System.Net.HttpStatusCode.NoContent) return true;
-				if (resp.StatusCode == System.Net.HttpStatusCode.OK) return true;
 
-				return false;
-			} catch (Exception err) {
-				throw new DocumentException($"DeleteItem({partitionId},{itemId}) failed", err);
+			Exception? lastErr = null;
+			for (int retry = 0; retry <= 3; retry++) {
+				try {
+					var resp = await this.Container.DeleteItemAsync<T>(itemId, new PartitionKey(partitionId));
+					if (resp.StatusCode == System.Net.HttpStatusCode.NoContent) return true;
+					if (resp.StatusCode == System.Net.HttpStatusCode.OK) return true;
+					if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+					return false;
+				} catch (CosmosException err) {
+					lastErr = err;
+					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
+						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+					} else if (err.StatusCode == System.Net.HttpStatusCode.NotFound) {
+						return false;
+					} else {
+						throw new DocumentException($"DeleteItem({partitionId},{itemId}) failed", err, err.StatusCode);
+					}
+				} catch (Exception err) {
+					throw new DocumentException($"DeleteItem({partitionId},{itemId}) failed", err);
+				}
 			}
+			throw new DocumentException($"DeleteItem({partitionId},{itemId}) failed", lastErr);
+
+
 		}
 
 
