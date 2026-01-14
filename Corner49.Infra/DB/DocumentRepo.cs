@@ -276,17 +276,17 @@ namespace Corner49.Infra.DB {
 
 		}
 
-		public async Task<bool> DeleteItem(string paritionId, string itemId) {
+		public async Task<bool> DeleteItem(string partitionId, string itemId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			try {
-				var resp = await this.Container.DeleteItemAsync<T>(itemId, new PartitionKey(paritionId));
+				var resp = await this.Container.DeleteItemAsync<T>(itemId, new PartitionKey(partitionId));
 				if (resp.StatusCode == System.Net.HttpStatusCode.NoContent) return true;
 				if (resp.StatusCode == System.Net.HttpStatusCode.OK) return true;
 
 				return false;
 			} catch (Exception err) {
-				return false;
+				throw new DocumentException($"DeleteItem({partitionId},{itemId}) failed", err);
 			}
 		}
 
