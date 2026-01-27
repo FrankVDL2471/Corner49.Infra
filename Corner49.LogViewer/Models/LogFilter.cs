@@ -18,6 +18,7 @@ namespace Corner49.LogViewer.Models {
 		public DateTime? Date { get; set; }
 
 		[Category("Filter")]
+		[Display(Prompt = "Hour")]
 		[Value("", null)]
 		[Value("00", 00)]
 		[Value("01", 01)]
@@ -45,12 +46,16 @@ namespace Corner49.LogViewer.Models {
 		[Value("23", 23)]
 		public int? Hour { get; set; }
 
+		[Category("Filter")]
+		[Display(Prompt = "Category")]
+		public string? Category { get; set; }
 
 		[Category("Filter")]
 		[Value("", "")]
 		[Value("Information", "Information")]
 		[Value("Warning", "Warning")]
 		[Value("Error", "Error")]
+		[Display(Prompt = "Level")]
 		public string? Level { get; set; }
 
 

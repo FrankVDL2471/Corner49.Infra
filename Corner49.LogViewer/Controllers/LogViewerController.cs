@@ -29,6 +29,7 @@ namespace Corner49.LogViewer.Controllers {
 			model.Hour = filter.Hour;
 			model.Level = filter.Level;
 			model.Sorting = filter.Sorting;
+			model.Category = filter.Category;
 
 			model.Apps = new List<KeyValuePair<object, string>>();
 			await foreach(var app in _reader.GetApps()) {
@@ -57,7 +58,8 @@ namespace Corner49.LogViewer.Controllers {
 			filter.App = data.App;
 			filter.Level = data.Level;	
 			filter.Sorting = data.Sorting;
-			
+			filter.Category = data.Category;	
+
 			return RedirectToAction("Index", filter);
 		}
 

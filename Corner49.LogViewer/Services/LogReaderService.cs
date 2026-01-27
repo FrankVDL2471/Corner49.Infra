@@ -1,4 +1,5 @@
-﻿using Azure.Storage.Blobs;
+﻿using Azure;
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Corner49.Infra.Tools;
 using Corner49.LogViewer.Models;
@@ -83,7 +84,7 @@ namespace Corner49.LogViewer.Services {
 					}
 
 					await Parallel.ForEachAsync(this.GetBlobs(path), async (itm, ct) => {
-						await this.Read(filter.App, itm.Name, logs);
+						await this.Read(filter.App, itm.Name, filter.Category, logs);
 					});
 				}
 			}
@@ -94,36 +95,57 @@ namespace Corner49.LogViewer.Services {
 			}
 		}
 
-		public async Task Read(string appName, string path, ConcurrentBag<LogMessage> logs, CancellationToken cancellationToken = default) {
+		public async Task Read(string appName, string path, string? category, ConcurrentBag<LogMessage> logs, CancellationToken cancellationToken = default) {
 			await Parallel.ForEachAsync(_containers, async (container, ct) => {
 				var client = container.GetBlobClient(path);
 				if (await client.ExistsAsync()) {
 
-					using (var stream = await client.OpenReadAsync()) {
-						using (StreamReader reader = new StreamReader(stream)) {
-							while (!reader.EndOfStream) {
-								if (cancellationToken.IsCancellationRequested) break;
-								string? line = await reader.ReadLineAsync();
-								if (line == null) continue;
+					BlobOpenReadOptions options = new BlobOpenReadOptions(false);
+					options.Conditions = new BlobRequestConditions();
+					options.Conditions.IfMatch = ETag.All; //   (await client.GetPropertiesAsync()).Value.ETag;	
 
-								if (container.Name == "insights-logs-appserviceapplogs") {
-									var msg = JsonSerializer.Deserialize<DiagnosticLogMessage>(line, JsonHelper.Options)?.Create();
-									if (msg != null) logs.Add(msg);
-								} else if (container.Name == "insights-logs-appservicehttplogs") {
-									var msg = JsonSerializer.Deserialize<HttpLogMessage>(line, JsonHelper.Options)?.Create();
-									if (msg != null) logs.Add(msg);
-								} else if (container.Name == "insights-logs-appserviceconsolelogs") {
-									var msg = JsonSerializer.Deserialize<ConsoleLogMessage>(line, JsonHelper.Options)?.Create();
-									if (msg != null) logs.Add(msg);
-								} else if (container.Name == "insights-logs-functionapplogs") {
-									var msg = JsonSerializer.Deserialize<FunctionLogMessage>(line, JsonHelper.Options)?.Create();
-									if (msg != null) logs.Add(msg);
+
+					try {
+
+						using (var stream = await client.OpenReadAsync(options)) {
+							using (StreamReader reader = new StreamReader(stream)) {
+								while (!reader.EndOfStream) {
+									if (cancellationToken.IsCancellationRequested) break;
+									string? line = await reader.ReadLineAsync();
+									if (line == null) continue;
+
+									LogMessage? msg = null;
+									if (container.Name == "insights-logs-appserviceapplogs") {
+										msg = JsonSerializer.Deserialize<DiagnosticLogMessage>(line, JsonHelper.Options)?.Create();
+									} else if (container.Name == "insights-logs-appservicehttplogs") {
+										msg = JsonSerializer.Deserialize<HttpLogMessage>(line, JsonHelper.Options)?.Create();
+									} else if (container.Name == "insights-logs-appserviceconsolelogs") {
+										msg = JsonSerializer.Deserialize<ConsoleLogMessage>(line, JsonHelper.Options)?.Create();
+									} else if (container.Name == "insights-logs-functionapplogs") {
+										msg = JsonSerializer.Deserialize<FunctionLogMessage>(line, JsonHelper.Options)?.Create();
+									}
+									if (msg != null) {
+										if (category != null) {
+											if (category.StartsWith("!") && category.Length > 1) {
+												string cat = category[1..];
+												if (cat.Equals(msg.Category, StringComparison.OrdinalIgnoreCase)) {
+													continue;
+												}
+											} else if (category.Equals(msg.Category, StringComparison.OrdinalIgnoreCase) == false) {
+												continue;
+											}
+										}
+										logs.Add(msg);
+									}
+
 								}
-
-
 							}
 						}
+
+					} catch (Exception ex) {
+						Console.WriteLine($"Error parsing log line: {ex.Message}");
 					}
+
 				}
 			});
 		}

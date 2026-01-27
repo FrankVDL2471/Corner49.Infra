@@ -23,7 +23,7 @@ namespace Corner49.LogViewer.Models {
 					var data = JsonSerializer.Deserialize<FunctionLogData>(this.Properties.Replace("'", "\""), JsonHelper.Options);
 
 					var msg = new LogMessage {
-						Time = DateTime.ParseExact(this.Time, "dd/MM/yyyy HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),	
+						Time = DateTime.ParseExact(this.Time, "MM/dd/yyyy HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),	
 						Category = data.Category,
 						Message = data.Message
 					};
