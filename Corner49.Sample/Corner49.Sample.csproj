@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Corner49.FormBuilder\Corner49.FormBuilder.csproj" />
     <ProjectReference Include="..\Corner49.Infra\Corner49.Infra.csproj" />
     <ProjectReference Include="..\Corner49.LogViewer\Corner49.LogViewer.csproj" />

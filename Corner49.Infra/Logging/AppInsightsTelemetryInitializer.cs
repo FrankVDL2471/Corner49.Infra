@@ -2,8 +2,6 @@
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http;
-using Serilog;
-using System.Globalization;
 
 namespace Corner49.Infra.Logging {
 

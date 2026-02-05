@@ -14,7 +14,7 @@
 		<Description>An opinionated viewer op Application Logs stored in a BlobContainer</Description>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
+		<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.12" />
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\Corner49.FormBuilder\Corner49.FormBuilder.csproj" />

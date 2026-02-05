@@ -155,7 +155,7 @@ namespace Corner49.LogViewer.Services {
 
 		private async IAsyncEnumerable<BlobItem> GetBlobs(string? prefix = null) {
 			foreach (var container in _containers) {
-				await foreach (var tree in container.GetBlobsByHierarchyAsync(prefix: prefix)) {
+				await foreach (var tree in container.GetBlobsByHierarchyAsync(new GetBlobsByHierarchyOptions {  Prefix = prefix})) {
 					yield return tree.Blob;
 				}
 			}
@@ -163,7 +163,7 @@ namespace Corner49.LogViewer.Services {
 
 		private async IAsyncEnumerable<BlobItem> GetSubscriptions() {
 			foreach (var container in _containers) {
-				await foreach (var sub in container.GetBlobsByHierarchyAsync(prefix: "resourceId=/SUBSCRIPTIONS")) {
+				await foreach (var sub in container.GetBlobsByHierarchyAsync(new GetBlobsByHierarchyOptions { Prefix = "resourceId=/SUBSCRIPTIONS" })) {
 					yield return sub.Blob;
 				}
 			}
