@@ -2,11 +2,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel;
 using System.Reflection;
-using Microsoft.OpenApi.Extensions;
 using Microsoft.AspNetCore.OpenApi;
 
 namespace Corner49.Infra.Helpers {
-	internal static class OpenApiHelpers {
+	public static class OpenApiHelpers {
 
 
 
@@ -14,7 +13,7 @@ namespace Corner49.Infra.Helpers {
 			options.AddSchemaTransformer((schema, context, cancelToken) => {
 				if (context.JsonPropertyInfo?.PropertyType == null) return Task.CompletedTask;
 
-				schema.CompleteSchema(context.JsonPropertyInfo.PropertyType);
+				schema.CompleteSchema(context.JsonPropertyInfo.PropertyType, context.JsonPropertyInfo.Name);
 
 
 				return Task.CompletedTask;
@@ -38,7 +37,7 @@ namespace Corner49.Infra.Helpers {
 							arg.Required = prp.GetCustomAttribute<RequiredAttribute>() != null;
 							arg.Deprecated = prp.GetCustomAttribute<ObsoleteAttribute>() != null;
 
-							arg.Schema.CompleteSchema(prp.PropertyType);
+							arg.Schema.CompleteSchema(prp.PropertyType, prp.Name);
 							arg.Schema.ReadOnly = prp.GetCustomAttribute<ReadOnlyAttribute>()?.IsReadOnly == true;
 							//arg.Schema.LinkReference(prp.PropertyType);
 
@@ -119,10 +118,8 @@ namespace Corner49.Infra.Helpers {
 			return doc;
 		}
 
-		public static OpenApiSchema CompleteSchema(this OpenApiSchema doc, Type prpType) {
+		public static OpenApiSchema CompleteSchema(this OpenApiSchema doc, Type prpType, string? prpName = null) {
 			var baseType = Nullable.GetUnderlyingType(prpType) ?? prpType;
-
-
 
 
 			if (prpType.IsEnum == true) {
@@ -139,18 +136,24 @@ namespace Corner49.Infra.Helpers {
 				var tp = baseType.GenericTypeArguments[0];
 				if (doc.Items != null) doc.Items.CompleteSchema(tp);
 			} else if ((!prpType.IsValueType) && (prpType != typeof(string))) {
-				if (_knownSchemas.ContainsKey(baseType)) {
-					doc.Reference = new Microsoft.OpenApi.Models.OpenApiReference {
-						Type = Microsoft.OpenApi.Models.ReferenceType.Schema,
-						Id = _knownSchemas[baseType]
-					};
-					return doc;
-				}
-				_knownSchemas.Add(baseType, baseType.Name);
+				//if (_knownSchemas.ContainsKey(baseType)) {
+				//	doc.Type = baseType.Name;
+				//	doc.Reference = new Microsoft.OpenApi.Models.OpenApiReference {
+				//		Type = Microsoft.OpenApi.Models.ReferenceType.Schema,
+				//		Id = _knownSchemas[baseType]
+				//	};
+				//	return doc;
+				//}
+				//_knownSchemas.Add(baseType, baseType.Name);
 
 
 				doc.Type = baseType.Name;
 				foreach (var prp in prpType.GetProperties()) {
+					if (prp.Name == "experiences") {
+						Console.WriteLine($"VoucherExperience");
+					}
+
+
 					var key = doc.Properties.Keys.FirstOrDefault(c => c.Equals(prp.Name, StringComparison.OrdinalIgnoreCase));
 					if (key == null) continue;
 					var arg = doc.Properties[key];
@@ -159,7 +162,8 @@ namespace Corner49.Infra.Helpers {
 					arg.Deprecated = prp.GetCustomAttribute<ObsoleteAttribute>() != null;
 					arg.ReadOnly = prp.GetCustomAttribute<ReadOnlyAttribute>()?.IsReadOnly ?? false;
 
-					arg.CompleteSchema(prp.PropertyType);
+
+					arg.CompleteSchema(prp.PropertyType, prp.Name);
 
 
 					var def = prp.GetCustomAttribute<DefaultValueAttribute>()?.Value;
@@ -177,6 +181,15 @@ namespace Corner49.Infra.Helpers {
 						}
 					}
 				}
+			} else if (baseType == typeof(int)) {
+			} else if (baseType == typeof(Int64)) {
+			} else if (baseType == typeof(string)) {
+			} else if (baseType == typeof(bool)) {
+			} else if (baseType == typeof(DateTime)) {
+			} else if (baseType == typeof(DateTimeOffset)) {
+
+			} else if (baseType.IsEnum == false) {
+				Console.WriteLine("unkown type");
 			}
 
 
