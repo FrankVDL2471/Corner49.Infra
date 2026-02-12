@@ -41,7 +41,7 @@ namespace Corner49.Infra.DB {
 		}
 
 
-		internal async Task Init(IServiceProvider serviceProvider) {
+		public async Task Init(IServiceProvider serviceProvider) {
 			foreach (var tp in _repoTypes) {
 				var repo = (tp.Value == null ? ActivatorUtilities.CreateInstance(serviceProvider, tp.Key)  : ActivatorUtilities.CreateInstance(serviceProvider, tp.Key, tp.Value))as IDocumentRepoInitializer;
 				if (repo != null) {
