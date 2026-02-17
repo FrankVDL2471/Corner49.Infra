@@ -200,6 +200,35 @@ namespace Corner49.Infra.Http {
 			}
 		}
 
+
+		public async Task<T?> Put<T>(string url, CancellationToken cancellationToken = default) where T : class  {
+			var path = this.CompleteUrl(url);
+
+			using (var track = _telemetry.TrackDependency(this.GetType().Name, $"PUT {path}")) {
+				var request = new HttpRequestMessage(HttpMethod.Put, path);
+
+				var client = await this.GetClient();
+				using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+				string respData = null;
+				try {
+					respData = await resp.Content.ReadAsStringAsync();
+					this.OnRequest("PUT", path, string.Empty, respData, resp.IsSuccessStatusCode);
+
+					if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
+
+					var rtrn = JsonSerializer.Deserialize<T>(respData, _options);
+					if (this.IncludeDataInMetrics) {
+						track.Finish(true, new { Request = string.Empty, Response = respData });
+					}
+					return rtrn;
+				} catch (HttpRequestException hre) {
+					track.SetFailed(hre, new { Request = string.Empty, Response = respData });
+					throw new ApiClientException($"PUT {client.BaseAddress}{path} failed", hre);
+				}
+			}
+		}
+
 		public async Task<T?> Patch<TBody, T>(string url, TBody body, CancellationToken cancellationToken = default) where T : class where TBody : class {
 			var path = this.CompleteUrl(url);
 
