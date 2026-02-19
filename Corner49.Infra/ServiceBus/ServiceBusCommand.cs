@@ -42,7 +42,7 @@ namespace Corner49.Infra.ServiceBus {
 		public string? Target { get; set; }
 
 
-		public BinaryData Data { get; set; }
+		public BinaryData? Data { get; set; }
 
 		public Type? DataType { get; set; }
 
@@ -53,13 +53,19 @@ namespace Corner49.Infra.ServiceBus {
 		public long? MessageCount { get; set; }
 
 
-		public T GetData<T>() where T : class {
-			if (Data == null) return default;
-			return Data.ToObjectFromJson<T>(JsonOptions);
+		public T? GetData<T>() where T : class {
+			try {
+				if (Data == null) return null;
+				if (Data.IsEmpty) return null;
+				return Data.ToObjectFromJson<T>(JsonOptions);
+			} catch { 
+				return null; 
+			}
 		}
 
 		public object? GetData() {
 			if (DataType == null) return null;
+			if (Data?.IsEmpty == true) return null;
 			return JsonSerializer.Deserialize(Data.ToStream(), DataType, JsonOptions);
 		}
 
