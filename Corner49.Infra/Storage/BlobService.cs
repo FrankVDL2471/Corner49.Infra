@@ -31,6 +31,8 @@ namespace Corner49.Infra.Storage {
 
 		Task<bool> Delete(string containerName, string name);
 
+		Task<BlobInfo?> GetBlob(string containerName, string name, Stream target);
+
 		Task<string?> GetFile(string containerName, string name, Stream target);
 		Task<string?> GetFileInBase64(string containerName, string name);
 
@@ -322,6 +324,27 @@ namespace Corner49.Infra.Storage {
 			var client = container.GetBlobClient(name);
 			return await client.DeleteIfExistsAsync(Azure.Storage.Blobs.Models.DeleteSnapshotsOption.IncludeSnapshots);
 		}
+
+		public async Task<BlobInfo?> GetBlob(string containerName, string name, Stream target) {
+			var container = await GetContainer(containerName, false);
+			if (container == null) return null;
+
+			var client = container.GetBlobClient(name);
+			if (await client.ExistsAsync()) {
+				var response = await client.DownloadToAsync(target);
+				target.Position = 0;
+
+				BlobInfo info = new BlobInfo();
+				info.ETag = response.Headers.ETag.ToString();
+				info.ContentType = response.Headers.ContentType;		
+				info.ContentLength = response.Headers.ContentLengthLong ?? response.Headers.ContentLength;
+				info.Date = response.Headers.Date;
+
+				return info;
+			}
+			return null;
+		}
+
 
 		public async Task<string?> GetFile(string containerName, string name, Stream target) {
 			var container = await GetContainer(containerName, false);
