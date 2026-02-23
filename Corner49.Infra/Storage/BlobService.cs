@@ -338,7 +338,14 @@ namespace Corner49.Infra.Storage {
 				info.ETag = response.Headers.ETag.ToString();
 				info.ContentType = response.Headers.ContentType;		
 				info.ContentLength = response.Headers.ContentLengthLong ?? response.Headers.ContentLength;
-				info.Date = response.Headers.Date;
+
+				if (response.Headers.TryGetValue("Last-Modified", out string? mod)) {
+					if (DateTimeOffset.TryParse(mod, out DateTimeOffset dt)) {
+						info.Date = dt;
+					}					
+				}
+
+				
 
 				return info;
 			}

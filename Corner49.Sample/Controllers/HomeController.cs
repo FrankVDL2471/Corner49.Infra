@@ -37,6 +37,8 @@ namespace Corner49.Sample.Controllers {
 
 
 			var data = new MemoryStream();
+			var blob = await _blob.GetBlob("ottogusto", "cat_001.png", data);	
+
 			//var fl = await _blob.GetFile("test", "test.xml", data);
 			//var img = await _blob.GetFile("ottogusto", "cat_001.png", data);
 
