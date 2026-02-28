@@ -118,7 +118,7 @@ namespace Corner49.Infra.Http {
 				} catch (HttpRequestException hre) {
 					track.SetFailed(hre, new { Response = respData });
 
-					throw new ApiClientException($"GET {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
+					throw new ApiClientException(hre.StatusCode, $"GET {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
 				}
 
 			}
@@ -148,7 +148,7 @@ namespace Corner49.Infra.Http {
 				} catch (HttpRequestException hre) {
 					track.SetFailed(hre, new { Response = respData });
 
-					throw new ApiClientException($"GET {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
+					throw new ApiClientException(hre.StatusCode, $"GET {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
 				}
 			}
 		}
@@ -166,7 +166,7 @@ namespace Corner49.Infra.Http {
 				var respData = await resp.Content.ReadAsStringAsync();
 				if (resp.IsSuccessStatusCode) return;
 				track.SetFailed(null, new { Response = respData });
-				throw new ApiClientException($"DELETE {client.BaseAddress}{path} Failed : {respData}", null);
+				throw new ApiClientException(resp.StatusCode, $"DELETE {client.BaseAddress}{path} Failed : {respData}", null);
 			}
 		}
 
@@ -195,7 +195,7 @@ namespace Corner49.Infra.Http {
 					return rtrn;
 				} catch (HttpRequestException hre) {
 					track.SetFailed(hre, new { Request = data, Response = respData });
-					throw new ApiClientException($"PUT {client.BaseAddress}{path} failed", hre);
+					throw new ApiClientException(hre.StatusCode, $"PUT {client.BaseAddress}{path} failed", hre);
 				}
 			}
 		}
@@ -224,7 +224,7 @@ namespace Corner49.Infra.Http {
 					return rtrn;
 				} catch (HttpRequestException hre) {
 					track.SetFailed(hre, new { Request = string.Empty, Response = respData });
-					throw new ApiClientException($"PUT {client.BaseAddress}{path} failed", hre);
+					throw new ApiClientException(hre.StatusCode, $"PUT {client.BaseAddress}{path} failed", hre);
 				}
 			}
 		}
@@ -254,7 +254,7 @@ namespace Corner49.Infra.Http {
 					return rtrn;
 				} catch (HttpRequestException hre) {
 					track.SetFailed(hre, new { Request = data, Response = respData });
-					throw new ApiClientException($"PATCH {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
+					throw new ApiClientException(hre.StatusCode, $"PATCH {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
 				}
 			}
 		}
@@ -287,7 +287,7 @@ namespace Corner49.Infra.Http {
 
 				} catch (HttpRequestException hre) {
 					track.SetFailed(hre, new { Request = data, Response = respData });
-					throw new ApiClientException($"POST {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message} - {respData}", hre);
+					throw new ApiClientException(hre.StatusCode, $"POST {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message} - {respData}", hre);
 				}
 			}
 		}
@@ -316,7 +316,7 @@ namespace Corner49.Infra.Http {
 					return respData;
 				} catch (HttpRequestException hre) {
 					track.SetFailed(hre, new { Request = data });
-					throw new ApiClientException($"POST {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
+					throw new ApiClientException(hre.StatusCode, $"POST {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
 				}
 			}
 		}
@@ -335,7 +335,7 @@ namespace Corner49.Infra.Http {
 					if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 				} catch (HttpRequestException hre) {
 					track.SetFailed(hre, null);
-					throw new ApiClientException($"POST {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
+					throw new ApiClientException(hre.StatusCode, $"POST {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
 				}
 			}
 		}
@@ -354,7 +354,7 @@ namespace Corner49.Infra.Http {
 					return await resp.Content.ReadAsByteArrayAsync();
 				} catch (HttpRequestException hre) {
 					track.SetFailed(hre, null);
-					throw new ApiClientException($"DOWNLOAD {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
+					throw new ApiClientException(hre.StatusCode, $"DOWNLOAD {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
 				}
 			}
 		}
@@ -373,7 +373,7 @@ namespace Corner49.Infra.Http {
 					await resp.Content.CopyToAsync(target, cancellationToken);
 				} catch (HttpRequestException hre) {
 					track.SetFailed(hre, null);
-					throw new ApiClientException($"DOWNLOAD {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
+					throw new ApiClientException(hre.StatusCode, $"DOWNLOAD {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
 				}
 			}
 		}
