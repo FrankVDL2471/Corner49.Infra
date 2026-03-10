@@ -95,14 +95,14 @@ namespace Corner49.Infra.DB {
 		public async Task Init(int? databaseThroughput = null, int? containerThroughput = null) {
 			for (int retry = 0; retry <= 5; retry++) {
 				try {
-					var dbResp = await _client.CreateDatabaseIfNotExistsAsync(_dbName, databaseThroughput);
+					var dbResp = await _client.CreateDatabaseIfNotExistsAsync(_dbName, databaseThroughput == null? null : ThroughputProperties.CreateAutoscaleThroughput(databaseThroughput.Value));
 					if (dbResp.Database == null) {
 						throw new DocumentException($"Database '{_dbName}' not created");
 					}
 
 					var resp = await dbResp.Database.DefineContainer(_containerName, "/" + _paritionKey)
 						.WithDefaultTimeToLive(-1)
-						.CreateIfNotExistsAsync(containerThroughput);
+						.CreateIfNotExistsAsync(containerThroughput == null ? null : ThroughputProperties.CreateAutoscaleThroughput(containerThroughput.Value));
 
 					return;
 				} catch (CosmosException err) {
