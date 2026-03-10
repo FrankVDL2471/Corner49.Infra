@@ -56,7 +56,7 @@ namespace Corner49.Infra.DB {
 
 	public interface IDocumentRepoInitializer {
 
-		Task Init(int? databaseThroughput = null, int? containerThroughput = null);
+		Task Init();
 	}
 
 	public class DocumentRepo<T> : IDocumentRepoInitializer, IDocumentRepo<T> where T : class {
@@ -90,6 +90,10 @@ namespace Corner49.Infra.DB {
 				if (_container == null) _container = _database.GetContainer(_containerName);
 				return _container;
 			}
+		}
+
+	 Task IDocumentRepoInitializer.Init() {
+			return this.Init(null, null);
 		}
 
 		public async Task Init(int? databaseThroughput = null, int? containerThroughput = null) {
