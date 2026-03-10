@@ -56,7 +56,7 @@ namespace Corner49.Infra.DB {
 
 	public interface IDocumentRepoInitializer {
 
-		Task Init();
+		Task Init(int? databaseThroughput = null, int? containerThroughput = null);
 	}
 
 	public class DocumentRepo<T> : IDocumentRepoInitializer, IDocumentRepo<T> where T : class {
@@ -92,17 +92,17 @@ namespace Corner49.Infra.DB {
 			}
 		}
 
-		public async Task Init() {
+		public async Task Init(int? databaseThroughput = null, int? containerThroughput = null) {
 			for (int retry = 0; retry <= 5; retry++) {
 				try {
-					var dbResp = await _client.CreateDatabaseIfNotExistsAsync(_dbName);
+					var dbResp = await _client.CreateDatabaseIfNotExistsAsync(_dbName, databaseThroughput);
 					if (dbResp.Database == null) {
 						throw new DocumentException($"Database '{_dbName}' not created");
 					}
 
 					var resp = await dbResp.Database.DefineContainer(_containerName, "/" + _paritionKey)
 						.WithDefaultTimeToLive(-1)
-						.CreateIfNotExistsAsync();
+						.CreateIfNotExistsAsync(containerThroughput);
 
 					return;
 				} catch (CosmosException err) {
