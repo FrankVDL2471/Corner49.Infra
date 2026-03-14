@@ -378,7 +378,7 @@ namespace Corner49.Infra {
 					p.AllowAnyMethod();
 					p.AllowAnyOrigin();
 					p.SetIsOriginAllowed(isAllowedOrigin);
-					p.WithExposedHeaders("Content-Disposition");
+					p.WithExposedHeaders("Content-Disposition", "Content-Type");
 				});
 			});
 
