@@ -162,6 +162,13 @@ namespace Corner49.Infra.Storage {
 			if (container == null) return null;
 
 			var client = container.GetBlobClient(name);
+			
+			if (! await client.ExistsAsync()) {
+				await client.UploadAsync(new BinaryData(new byte[0]));
+				client = container.GetBlobClient(name);
+			}
+
+			
 			if (!string.IsNullOrEmpty(contentType)) {
 				var headers = new Azure.Storage.Blobs.Models.BlobHttpHeaders();
 				headers.ContentType = contentType;
