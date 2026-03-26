@@ -510,6 +510,7 @@ namespace Corner49.Infra {
 			} else {
 				this.Services.AddSession(options => {
 					options.IdleTimeout = TimeSpan.FromSeconds(30);
+					options.Cookie.Name = $"{_appName}.Session";	
 					options.Cookie.HttpOnly = false;
 					options.Cookie.IsEssential = true;
 				});
