@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
+using System.Security.Cryptography.Pkcs;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -21,8 +22,47 @@ namespace Corner49.LogViewer.Controllers {
 			string connectString = config.GetSection($"Storage:Logs:ConnectString")?.Value;
 			_reader = new LogReaderService(connectString);
 		}
-		public async Task<IActionResult> Index([FromQuery] LogFilter filter) {
-			
+		public async Task<IActionResult> Index([FromQuery] LogFilter filter, string? action = null) {
+
+			LogViewerModel model = await this.GetModel(filter);
+
+
+			return View(model);
+		}
+
+		[HttpPost]
+		public async Task<IActionResult> Filter(LogViewerModel data, IFormCollection collection) {
+			LogFilter filter = new LogFilter();
+			filter.Date = data.Date;
+			filter.Hour = data.Hour;
+			filter.App = data.App;
+			filter.Level = data.Level;
+			filter.Sorting = data.Sorting;
+			filter.Category = data.Category;
+
+			return RedirectToAction("Index", filter);
+		}
+
+
+		public async Task<IActionResult> Download([FromQuery] LogFilter filter) {
+			var model = await this.GetModel(filter);
+
+			string name = $"logs_{filter.Category}_{filter.Date.Value.ToString("yyyyMMdd")}.txt";
+
+			MemoryStream mem = new MemoryStream();
+			StreamWriter writer = new StreamWriter(mem, System.Text.Encoding.UTF8);
+
+			foreach (var msg in model.Messages) {
+				await writer.WriteLineAsync($"[{msg.Time.Value.ToString("dd/MM/yyyy HH:mm:ss.fffff")}|{msg.Level}|{msg.Category}] {msg.Message}");
+			}
+			await writer.FlushAsync();
+
+			mem.Position = 0;
+			return File(mem, "text/plain", name);
+		}
+
+
+		private async Task<LogViewerModel> GetModel(LogFilter filter) {
 			LogViewerModel model = new LogViewerModel();
 			model.App = filter.App;
 			model.Date = filter.Date ?? DateTime.Today;
@@ -32,7 +72,7 @@ namespace Corner49.LogViewer.Controllers {
 			model.Category = filter.Category;
 
 			model.Apps = new List<KeyValuePair<object, string>>();
-			await foreach(var app in _reader.GetApps()) {
+			await foreach (var app in _reader.GetApps()) {
 				model.Apps.Add(new KeyValuePair<object, string>(app, app));
 			}
 
@@ -45,24 +85,9 @@ namespace Corner49.LogViewer.Controllers {
 				model.Messages = new List<LogMessage>();
 			}
 
+			return model;
 
-
-				return View(model);
 		}
-
-		[HttpPost]
-		public IActionResult Filter(LogViewerModel data, IFormCollection collection) {
-			LogFilter filter = new LogFilter();
-			filter.Date = data.Date;
-			filter.Hour = data.Hour;
-			filter.App = data.App;
-			filter.Level = data.Level;	
-			filter.Sorting = data.Sorting;
-			filter.Category = data.Category;	
-
-			return RedirectToAction("Index", filter);
-		}
-
 
 	}
 }

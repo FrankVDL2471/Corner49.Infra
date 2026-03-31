@@ -1,5 +1,6 @@
 ﻿@using Corner49.FormBuilder
 @using Corner49.LogViewer.Models
+@using Corner49.LogViewer.Helpers
 @model LogViewerModel
 
 @*
@@ -39,11 +40,12 @@
 					@Html.BuildForm(this.Context, Model).WithCategory("Filter").WithLookup("App", Model.Apps, false).Build(new BuildOptions
 					{
 						ColumnWidth = 3,
-						ColumnsSizes = new int[] { 2, 2, 1,3, 1, 2 },
+						ColumnsSizes = new int[] { 2, 2, 1,3, 1, 1 },
 						LabelAsPlaceholder = true
 					})
-					<div class="col-sm-1" style="padding-top:5px">
+					<div class="col-sm-2" style="padding-top:5px">
 						<input type="submit" value="Load" class="btn btn-sm btn-primary" />
+						<a href="@this.Context.GetRedirect("/LogViewer/download")" class="btn btn-sm btn-secondary" >Download</a>
 					</div>
 
 				</div>
