@@ -25,14 +25,6 @@ namespace Corner49.Infra.Logging {
 					_telemetry = new TelemetryClient(new Microsoft.ApplicationInsights.Extensibility.TelemetryConfiguration {
 						ConnectionString = connectstring
 					});
-				} else {
-					var instrumationKey = config["ApplicationInsights:InstrumentationKey"];
-					if (!string.IsNullOrEmpty(instrumationKey)) {
-						_telemetry = new TelemetryClient(new Microsoft.ApplicationInsights.Extensibility.TelemetryConfiguration {
-							InstrumentationKey = instrumationKey
-						});
-
-					}
 				}
 			}
 		}

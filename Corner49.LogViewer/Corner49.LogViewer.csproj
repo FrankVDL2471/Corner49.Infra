@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 		<OutputType>library</OutputType>
@@ -14,7 +14,7 @@
 		<Description>An opinionated viewer op Application Logs stored in a BlobContainer</Description>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.12" />
+		<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="10.0.2" />
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\Corner49.FormBuilder\Corner49.FormBuilder.csproj" />

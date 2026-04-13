@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36127.28 d17.14
+# Visual Studio Version 18
+VisualStudioVersion = 18.4.11626.88 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corner49.Infra", "Corner49.Infra\Corner49.Infra.csproj", "{0076053F-AB3D-F23D-C529-0C1552C3F313}"
 EndProject
@@ -12,6 +12,11 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corner49.FormBuilder", "Corner49.FormBuilder\Corner49.FormBuilder.csproj", "{B2A16FCB-58B4-D068-8567-E88B9F7E3F82}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corner49.LogViewer", "Corner49.LogViewer\Corner49.LogViewer.csproj", "{85128650-42D6-2F8D-287B-73B6AD2E3A38}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2A4D216B-0D89-4A82-9167-6A875904D8A9}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\publish-nuget.yml = .github\workflows\publish-nuget.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

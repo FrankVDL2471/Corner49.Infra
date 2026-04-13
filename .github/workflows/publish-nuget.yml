@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      APP_VERSION: 9.3.${{github.run_number}}
+      APP_VERSION: 10.0.${{github.run_number}}
     
     steps:
     - name: Checkout code
@@ -21,7 +21,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: '9.x' # Specify the .NET version you need
+        dotnet-version: '10.x' # Specify the .NET version you need
 
     - name: Print new build number
       run: echo "App version is ${{ env.APP_VERSION }}"
