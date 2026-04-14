@@ -153,15 +153,15 @@ namespace Corner49.Infra {
 				}
 
 
-				//AppInsightsTelemetryProcessor.LongRequestThreshold = _loggingOptions.TrackLongRequestThreshold;
-				//if (_loggingOptions.IngoreRequestsPaths != null) {
-				//	foreach (var path in _loggingOptions.IngoreRequestsPaths) {
-				//		AppInsightsTelemetryProcessor.AddPath(path);
-				//	}
-				//}
+				AppInsightsTelemetryProcessor.LongRequestThreshold = _loggingOptions.TrackLongRequestThreshold;
+				if (_loggingOptions.IngoreRequestsPaths != null) {
+					foreach (var path in _loggingOptions.IngoreRequestsPaths) {
+						AppInsightsTelemetryProcessor.AddPath(path);
+					}
+				}
 
-				//_services.AddSingleton<ITelemetryInitializer, AppInsightsTelemetryInitializer>();
-				//_services.AddApplicationInsightsTelemetryProcessor<AppInsightsTelemetryProcessor>();
+				_services.AddSingleton<ITelemetryInitializer, AppInsightsTelemetryInitializer>();
+				_services.AddApplicationInsightsTelemetryProcessor<AppInsightsTelemetryProcessor>();
 			}
 
 			//_builder.Logging.add
