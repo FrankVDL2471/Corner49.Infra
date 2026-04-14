@@ -43,8 +43,7 @@ namespace Corner49.Infra {
 
 			//Internal services
 			_services.AddSingleton<IServiceBusService, ServiceBusService>();
-			_services.AddSingleton<ITelemetryService, TelemetryService>();
-
+			
 
 			Configuration = builder.Configuration;
 			Instance = new InfraBuilderInstance { Name = appName };
@@ -56,8 +55,7 @@ namespace Corner49.Infra {
 
 			//Internal services
 			_services.AddSingleton<IServiceBusService, ServiceBusService>();
-			_services.AddSingleton<ITelemetryService, TelemetryService>();
-
+			
 
 			Configuration = builder.Configuration;
 			Instance = new InfraBuilderInstance { Name = appName };
@@ -70,7 +68,6 @@ namespace Corner49.Infra {
 
 			//Internal services
 			_services.AddSingleton<IServiceBusService, ServiceBusService>();
-			_services.AddSingleton<ITelemetryService, TelemetryService>();
 
 
 			Configuration = config;
