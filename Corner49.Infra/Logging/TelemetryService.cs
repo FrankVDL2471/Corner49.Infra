@@ -1,4 +1,5 @@
 ﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Configuration;
@@ -19,22 +20,14 @@ namespace Corner49.Infra.Logging {
 
 	public class TelemetryService : ITelemetryService {
 		private readonly TelemetryClient? _telemetry;
-		
-		public TelemetryService(IConfiguration? config) {
-			if (config != null) {
-				var connectstring = config["APPLICATIONINSIGHTS_CONNECTION_STRING"] ?? config["AppInsights:ConnectionString"];
-				if (!string.IsNullOrEmpty(connectstring)) {
-					var cfg = TelemetryConfiguration.CreateDefault();
-					cfg.ConnectionString = connectstring; 
 
-					_telemetry = new TelemetryClient(cfg);
-					_telemetry.Context.Cloud.RoleName = InfraBuilder.Instance.Name;
 
-				
-				}
+		public TelemetryService(TelemetryClient? telemetryClient) {
+			_telemetry = telemetryClient;
+			if (_telemetry != null) {
+				_telemetry.Context.Cloud.RoleName = InfraBuilder.Instance.Name;
 			}
 		}
-
 
 		public void TrackMetric(MetricTelemetry metric) {
 			if (_telemetry != null) _telemetry.TrackMetric(metric);
@@ -50,6 +43,7 @@ namespace Corner49.Infra.Logging {
 		public DependencyTracker TrackDependency(string type, string name) {
 			return new DependencyTracker(_telemetry, type, name);
 		}
+
 		public IDisposable StartOperation(RequestTelemetry metric) {
 			if (_telemetry != null) return _telemetry.StartOperation(metric);
 			return new EmptyOperation();
@@ -117,6 +111,18 @@ namespace Corner49.Infra.Logging {
 
 	public class EmptyOperation : IDisposable {
 		public void Dispose() {
+		}
+	}
+
+	public class NoOpTelemetryService : ITelemetryService {
+		public void TrackMetric(MetricTelemetry metric) { }
+		public void TrackTrace(string msg) { }
+		public void TrackException(Exception err) { }
+		public DependencyTracker TrackDependency(string type, string name) {
+			return new DependencyTracker(null, type, name);
+		}
+		public IDisposable StartOperation(RequestTelemetry metric) {
+			return new EmptyOperation();
 		}
 	}
 

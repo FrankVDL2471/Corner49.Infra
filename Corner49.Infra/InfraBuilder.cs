@@ -24,6 +24,12 @@ using Microsoft.AspNetCore.OpenApi;
 using Corner49.Infra.Auth;
 
 namespace Corner49.Infra {
+
+	public class InfraBuilderInstance {
+		public string? Name { get; set; }
+		public IServiceProvider? Services { get; set; }
+	}
+
 	public class InfraBuilder {
 
 		private readonly IHostApplicationBuilder _builder;
@@ -41,7 +47,7 @@ namespace Corner49.Infra {
 
 
 			Configuration = builder.Configuration;
-			Instance = this;
+			Instance = new InfraBuilderInstance { Name = appName };
 		}
 		public InfraBuilder(HostApplicationBuilder builder, string appName) {
 			_builder = builder;
@@ -54,7 +60,7 @@ namespace Corner49.Infra {
 
 
 			Configuration = builder.Configuration;
-			Instance = this;
+			Instance = new InfraBuilderInstance { Name = appName };
 		}
 
 		public InfraBuilder(IHostApplicationBuilder builder, ConfigurationManager config, string appName) {
@@ -68,13 +74,13 @@ namespace Corner49.Infra {
 
 
 			Configuration = config;
-			Instance = this;
+			Instance = new InfraBuilderInstance { Name = appName };
 		}
 
 
 
 
-		public static InfraBuilder Instance { get; private set; }
+		public static InfraBuilderInstance Instance { get; private set; } = new InfraBuilderInstance();
 
 		public ConfigurationManager Configuration;
 
@@ -618,6 +624,7 @@ namespace Corner49.Infra {
 
 
 			if (_docDBBuilder != null) await _docDBBuilder.Init(app.Services);
+			InfraBuilder.Instance.Services = app.Services;
 			await app.RunAsync();
 		}
 
@@ -625,6 +632,7 @@ namespace Corner49.Infra {
 		public Task BuildAndRun() {
 			if (_builder is HostApplicationBuilder host) {
 				var app = host.Build();
+				InfraBuilder.Instance.Services = app.Services;
 				return app.RunAsync();
 			} else if (_builder is WebApplicationBuilder web) {
 				return BuildAndRun(null, null, null);

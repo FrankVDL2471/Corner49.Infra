@@ -1,5 +1,6 @@
 ﻿using Corner49.Infra.Logging;
 using Microsoft.Azure.Amqp.Framing;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -38,7 +39,7 @@ namespace Corner49.Infra.Http {
 			_options.Converters.Add(new JsonStringEnumConverter(_options.PropertyNamingPolicy));
 			if (jsonOptions != null) jsonOptions(_options);
 
-			_telemetry = new TelemetryService(InfraBuilder.Instance?.Configuration);
+			_telemetry = InfraBuilder.Instance.Services?.GetService<ITelemetryService>() ?? new NoOpTelemetryService();
 		}
 
 

@@ -4,6 +4,7 @@ using Corner49.Infra.Storage;
 using Corner49.Sample.Messages;
 using Corner49.Sample.Models;
 using Corner49.Sample.Repos;
+using Corner49.Sample.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Build.Framework;
 using System.Diagnostics;
@@ -54,9 +55,19 @@ namespace Corner49.Sample.Controllers {
 		}
 
 
+		public async Task<IActionResult> DummyApi() {
+			var api = new DummyApi();
+			var resp = await api.Test();
 
 
-			[ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+			return RedirectToAction("Index");
+		}
+
+
+
+
+
+		[ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 		public IActionResult Error() {
 			return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
 		}
