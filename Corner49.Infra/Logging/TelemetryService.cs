@@ -1,5 +1,6 @@
-﻿using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.ApplicationInsights;
+﻿using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Configuration;
 using System.Diagnostics;
 using System.Text.Json;
@@ -18,13 +19,18 @@ namespace Corner49.Infra.Logging {
 
 	public class TelemetryService : ITelemetryService {
 		private readonly TelemetryClient? _telemetry;
+		
 		public TelemetryService(IConfiguration? config) {
 			if (config != null) {
 				var connectstring = config["APPLICATIONINSIGHTS_CONNECTION_STRING"] ?? config["AppInsights:ConnectionString"];
 				if (!string.IsNullOrEmpty(connectstring)) {
-					_telemetry = new TelemetryClient(new Microsoft.ApplicationInsights.Extensibility.TelemetryConfiguration {
-						ConnectionString = connectstring
-					});
+					var cfg = TelemetryConfiguration.CreateDefault();
+					cfg.ConnectionString = connectstring; 
+
+					_telemetry = new TelemetryClient(cfg);
+					_telemetry.Context.Cloud.RoleName = InfraBuilder.Instance.Name;
+
+				
 				}
 			}
 		}
