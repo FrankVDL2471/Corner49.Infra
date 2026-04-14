@@ -66,6 +66,8 @@ namespace Corner49.Infra.Logging {
 		private Stopwatch _sw;
 
 		private bool _success = true;
+		private bool _disposed = false;
+
 		public DependencyTracker(TelemetryClient? client, string type, string name) {
 			_client = client;
 			_type = type;
@@ -76,8 +78,9 @@ namespace Corner49.Infra.Logging {
 		}
 
 		public void SetFailed(Exception? err = null, object? data = null) {
-			if (!_sw.IsRunning) return;
+			if (_disposed || !_sw.IsRunning) return;
 			_sw.Stop();
+			_disposed = true;
 
 			if (err != null) {
 				if (_client != null) {
@@ -90,8 +93,9 @@ namespace Corner49.Infra.Logging {
 
 
 		public void Finish(bool success, object? data = null) {
-			if (!_sw.IsRunning) return;
+			if (_disposed || !_sw.IsRunning) return;
 			_sw.Stop();
+			_disposed = true;
 
 			if (_client != null) {
 				string body = string.Empty;
@@ -105,12 +109,6 @@ namespace Corner49.Infra.Logging {
 			}
 		}
 
-		public void LogStep(string msg) {
-			if (!_sw.IsRunning) return;
-			if (_client != null) {
-				_client.TrackDependency(_type, _name, msg, _start, _sw.Elapsed, true);
-			}
-		}
 
 		public void Dispose() {
 			this.Finish(_success, null);
