@@ -625,6 +625,13 @@ namespace Corner49.Infra {
 			await app.RunAsync();
 		}
 
+		public async Task Run(IHost host) {
+			if (_docDBBuilder != null) await _docDBBuilder.Init(host.Services);
+			InfraBuilder.Instance.Services = host.Services;
+			await host.RunAsync();	
+		}
+
+
 
 		public Task BuildAndRun() {
 			if (_builder is HostApplicationBuilder host) {
