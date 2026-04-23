@@ -40,7 +40,7 @@ namespace Corner49.Infra.Storage {
 		Task<string?> MoveFile(string sourceContainer, string sourceName, string targetContainer, string targetName);
 		Task<IEnumerable<string>?> GetFiles(string containerName);
 
-		IAsyncEnumerable<string>? GetItems(string containerName, string? path);
+		IAsyncEnumerable<string> GetItems(string containerName, string? path);
 		string? GetCDN(string containName, string name);
 	}
 
@@ -438,7 +438,7 @@ namespace Corner49.Infra.Storage {
 			return container.GetBlobs().Select(b => b.Name);
 		}
 
-		public async IAsyncEnumerable<string>? GetItems(string containerName, string? path) {
+		public async IAsyncEnumerable<string> GetItems(string containerName, string? path) {
 			var container = await GetContainer(containerName, false);
 			if (container == null) yield break;
 
@@ -448,11 +448,11 @@ namespace Corner49.Infra.Storage {
 			var items = container.GetBlobsByHierarchyAsync(options);
 
 			await foreach(var item in items) {
-
 				if (item.IsBlob) {
+					if (item.Blob.Deleted) continue;
 					yield return item.Blob.Name;
 				} else if (item.IsPrefix) {
-					yield return item.Prefix;
+					yield return item.Prefix + "/";
 				}
 			}
 
