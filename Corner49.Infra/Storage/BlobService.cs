@@ -39,6 +39,8 @@ namespace Corner49.Infra.Storage {
 		Task<Stream?> DownloadFile(string containerName, string name, CancellationToken cancellationToken = default);
 		Task<string?> MoveFile(string sourceContainer, string sourceName, string targetContainer, string targetName);
 		Task<IEnumerable<string>?> GetFiles(string containerName);
+
+		IAsyncEnumerable<string>? GetItems(string containerName, string? path);
 		string? GetCDN(string containName, string name);
 	}
 
@@ -435,6 +437,27 @@ namespace Corner49.Infra.Storage {
 
 			return container.GetBlobs().Select(b => b.Name);
 		}
+
+		public async IAsyncEnumerable<string>? GetItems(string containerName, string? path) {
+			var container = await GetContainer(containerName, false);
+			if (container == null) yield break;
+
+
+			var options = path == null ? null : new Azure.Storage.Blobs.Models.GetBlobsByHierarchyOptions { StartFrom = path };
+
+			var items = container.GetBlobsByHierarchyAsync(options);
+
+			await foreach(var item in items) {
+
+				if (item.IsBlob) {
+					yield return item.Blob.Name;
+				} else if (item.IsPrefix) {
+					yield return item.Prefix;
+				}
+			}
+
+		}
+
 
 		public string GetCDN(string containerName, string name) {
 			return $"{_cdnHost}/{containerName}/{name}";
