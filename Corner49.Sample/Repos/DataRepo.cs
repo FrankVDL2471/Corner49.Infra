@@ -2,6 +2,7 @@
 using Corner49.Sample.Models;
 using Microsoft.Azure.Cosmos;
 
+
 namespace Corner49.Sample.Repos {
 	
 	public interface IDataRepo {
@@ -24,7 +25,7 @@ namespace Corner49.Sample.Repos {
 		}
 
 		public Task<QueryResult<DataModel>> Query(Func<IQueryable<DataModel>, IQueryable<DataModel>> query) {
-			return _repo.Query(null, query);
+			return _repo.Query((string?)null, query);
 		}
 
 	}
