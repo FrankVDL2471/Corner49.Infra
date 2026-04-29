@@ -473,7 +473,7 @@ namespace Corner49.Infra.DB {
 					}
 
 					if (_partitionKey.Length == 1) {
-						var resp = await dbResp.Database.DefineContainer(_containerName, "/" + _partitionKey)
+						var resp = await dbResp.Database.DefineContainer(_containerName, "/" + _partitionKey[0])
 						.WithDefaultTimeToLive(-1)
 						.CreateIfNotExistsAsync(containerThroughput == null ? null : ThroughputProperties.CreateAutoscaleThroughput(containerThroughput.Value));
 
