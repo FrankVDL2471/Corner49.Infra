@@ -3,7 +3,6 @@ using Corner49.DB.Tools;
 using Corner49.Infra.Tools;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
-using Microsoft.Extensions.FileSystemGlobbing;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Runtime.CompilerServices;
@@ -35,15 +34,14 @@ namespace Corner49.Infra.DB {
 		Task<QueryResult<T>> Filter(string? partitionKey, DocumentFilter<T> filter, CancellationToken cancelToken = default);
 		Task<QueryResult<T>> Query(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
 
-		Task<QueryResult<T>> Query(string? partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
+		Task<QueryResult<T>> Query(string? partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 
-		IAsyncEnumerable<M> ExecSQL<M>(string sql, CancellationToken cancelToken = default);
-		IAsyncEnumerable<M> ExecSQL<M>(string sql, string partitionKey, int? maxItemCount = null, CancellationToken cancelToken = default);
+		IAsyncEnumerable<M> ExecSQL<M>(string? partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 
-		Task<string?> ReadSQL(string sql, Func<T, Task<bool>> onRead, string? partitionKey = null, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
+		Task<string?> ReadSQL(string? partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 		Task<int> CountSQL(string where, System.Threading.CancellationToken cancelToken = default);
 
-		IAsyncEnumerable<JsonElement> RawSQL(string sql, System.Threading.CancellationToken cancelToken = default);
+		IAsyncEnumerable<JsonElement> RawSQL(string? partitionKey, string sql, Dictionary<string, object>? parameters = null, System.Threading.CancellationToken cancelToken = default);
 
 		Task<ChangeFeedProcessor> GetChangeFeedProcessor(Container.ChangesHandler<T> changeHandler, string leaseName = "changeLeases", string? processorName = null, string? instanceName = null,
 						Func<Task>? onRelease = null,
@@ -67,22 +65,23 @@ namespace Corner49.Infra.DB {
 
 		private readonly string _dbName;
 		private readonly string _containerName;
-		private readonly string _paritionKey;
-		private readonly string _itemKey;
+		private readonly string[] _partitionKey;
 
 
-		public DocumentRepo(CosmosClient client, string dbName, string containerName, string paritionKey, string itemKey = "id") {
+		public DocumentRepo(CosmosClient client, string dbName, string containerName, params string[] paritionKey) {
 			_client = client;
 
 			_dbName = dbName;
 			_containerName = containerName;
-			_paritionKey = paritionKey;
-			_itemKey = itemKey;
+			_partitionKey = paritionKey;
+			if (_partitionKey == null || _partitionKey.Length == 0) {
+				_partitionKey = new string[] { "id" };
+			}
 		}
 
 
-		private Database _database;
-		private Container _container;
+		private Database? _database;
+		private Container? _container;
 
 		protected Container Container {
 			get {
@@ -92,21 +91,33 @@ namespace Corner49.Infra.DB {
 			}
 		}
 
-	 Task IDocumentRepoInitializer.Init() {
+		Task IDocumentRepoInitializer.Init() {
 			return this.Init(null, null);
 		}
 
 		public async Task Init(int? databaseThroughput = null, int? containerThroughput = null) {
 			for (int retry = 0; retry <= 5; retry++) {
 				try {
-					var dbResp = await _client.CreateDatabaseIfNotExistsAsync(_dbName, databaseThroughput == null? null : ThroughputProperties.CreateAutoscaleThroughput(databaseThroughput.Value));
+					var dbResp = await _client.CreateDatabaseIfNotExistsAsync(_dbName, databaseThroughput == null ? null : ThroughputProperties.CreateAutoscaleThroughput(databaseThroughput.Value));
 					if (dbResp.Database == null) {
 						throw new DocumentException($"Database '{_dbName}' not created");
 					}
 
-					var resp = await dbResp.Database.DefineContainer(_containerName, "/" + _paritionKey)
+					if (_partitionKey.Length == 1) {
+						var resp = await dbResp.Database.DefineContainer(_containerName, "/" + _partitionKey)
 						.WithDefaultTimeToLive(-1)
 						.CreateIfNotExistsAsync(containerThroughput == null ? null : ThroughputProperties.CreateAutoscaleThroughput(containerThroughput.Value));
+
+					} else {
+						ContainerProperties containerProperties = new ContainerProperties(
+								id: _containerName,
+								partitionKeyPaths: _partitionKey.Select(c => "/" + c).ToList()
+						);
+						containerProperties.DefaultTimeToLive = -1;
+
+						var resp = await dbResp.Database.CreateContainerIfNotExistsAsync(containerProperties, containerThroughput == null ? null : ThroughputProperties.CreateAutoscaleThroughput(containerThroughput.Value));
+
+					}
 
 					return;
 				} catch (CosmosException err) {
@@ -171,14 +182,25 @@ namespace Corner49.Infra.DB {
 
 
 
+		public Task<T?> GetItem(string partitionId, string itemId) {
+			return this.GetItem(new PartitionKey(partitionId), itemId);
+		}
+		public Task<T?> GetItem(string[] partitionId, string itemId) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionId) {
+				bld.Add(pk);
+			}
+			return this.GetItem(bld.Build(), itemId);
+		}
 
-		public async Task<T?> GetItem(string partitionId, string itemId) {
+
+		private async Task<T?> GetItem(PartitionKey pk, string itemId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			Exception? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
-					var resp = await this.Container.ReadItemAsync<T>(itemId, new PartitionKey(partitionId));
+					var resp = await this.Container.ReadItemAsync<T>(itemId, pk);
 					if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
 					return resp.Resource;
 				} catch (CosmosException err) {
@@ -190,29 +212,41 @@ namespace Corner49.Infra.DB {
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
 						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
 					} else {
-						throw new DocumentException($"GetItem({partitionId},{itemId}) failed", err, err.StatusCode);
+						throw new DocumentException($"GetItem({pk},{itemId}) failed", err, err.StatusCode);
 					}
 				} catch (Exception ex) {
-					throw new DocumentException($"GetItem({partitionId},{itemId}) failed", ex);
+					throw new DocumentException($"GetItem({pk},{itemId}) failed", ex);
 				}
 			}
-			throw new DocumentException($"GetItem({partitionId},{itemId}) failed", lastErr);
+			throw new DocumentException($"GetItem({pk},{itemId}) failed", lastErr);
 		}
+
+
+
 
 		public IAsyncEnumerable<T> GetItems(string? paritionId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
-
-
 			return this.GetQueryResults(this.CreateQuery(paritionId));
 		}
 
-		public async Task<T> AddItem(string paritionId, T item) {
+		public Task<T> AddItem(string paritionId, T item) { 
+			return this.AddItem(new PartitionKey(paritionId), item);
+		}
+		public Task<T> AddItem(string[] partitionId, T item) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionId) {
+				bld.Add(pk);
+			}
+			return this.AddItem(bld.Build(), item);
+		}
+
+		private async Task<T> AddItem(PartitionKey pk, T item) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			Exception? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
-					var resp = await this.Container.CreateItemAsync(item, new PartitionKey(paritionId));
+					var resp = await this.Container.CreateItemAsync(item, pk);
 					return resp.Resource;
 
 				} catch (CosmosException err) {
@@ -231,13 +265,24 @@ namespace Corner49.Infra.DB {
 			throw new DocumentException($"AddItem failed", lastErr);
 		}
 
-		public async Task<T> UpsertItem(string partitionId, T item, Action<HttpStatusCode>? status = null) {
+
+		public Task<T> UpsertItem(string paritionId, T item, Action<HttpStatusCode>? status = null) {
+			return this.UpsertItem(new PartitionKey(paritionId), item, status);
+		}
+		public Task<T> UpsertItem(string[] partitionId, T item, Action<HttpStatusCode>? status = null) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionId) {
+				bld.Add(pk);
+			}
+			return this.UpsertItem(bld.Build(), item, status);
+		}
+		private async Task<T> UpsertItem(PartitionKey pk, T item, Action<HttpStatusCode>? status = null) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			Exception? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
-					var resp = await this.Container.UpsertItemAsync(item, new PartitionKey(partitionId));
+					var resp = await this.Container.UpsertItemAsync(item, pk);
 					if (status != null) status.Invoke(resp.StatusCode);
 					return resp.Resource;
 
@@ -257,13 +302,23 @@ namespace Corner49.Infra.DB {
 			throw new DocumentException($"UpsertItem failed", lastErr);
 		}
 
-		public async Task<T> PatchItem(string partitionId, string itemId, IReadOnlyList<PatchOperation> patches) {
+		public Task<T> PatchItem(string paritionId, string itemId, IReadOnlyList<PatchOperation> patches) {
+			return this.PatchItem(new PartitionKey(paritionId), itemId, patches);
+		}
+		public Task<T> PatchItem(string[] partitionId, string itemId, IReadOnlyList<PatchOperation> patches) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionId) {
+				bld.Add(pk);
+			}
+			return this.PatchItem(bld.Build(), itemId, patches);
+		}
+		private async Task<T> PatchItem(PartitionKey pk, string itemId, IReadOnlyList<PatchOperation> patches) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			Exception? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
-					return await this.Container.PatchItemAsync<T>(itemId, new PartitionKey(partitionId), patches);
+					return await this.Container.PatchItemAsync<T>(itemId, pk, patches);
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
@@ -271,24 +326,35 @@ namespace Corner49.Infra.DB {
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
 						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
 					} else {
-						throw new DocumentException($"PatchItem({partitionId},{itemId}) failed", err, err.StatusCode);
+						throw new DocumentException($"PatchItem({pk},{itemId}) failed", err, err.StatusCode);
 					}
 				} catch (Exception err) {
-					throw new DocumentException($"PatchItem({partitionId},{itemId}) failed", err);
+					throw new DocumentException($"PatchItem({pk},{itemId}) failed", err);
 				}
 			}
-			throw new DocumentException($"PatchItem({partitionId},{itemId}) failed", lastErr);
+			throw new DocumentException($"PatchItem({pk},{itemId}) failed", lastErr);
 
 		}
 
-		public async Task<bool> DeleteItem(string partitionId, string itemId) {
+		public Task<bool> DeleteItem(string paritionId, string itemId) {
+			return this.DeleteItem(new PartitionKey(paritionId), itemId);
+		}
+		public Task<bool> DeleteItem(string[] partitionId, string itemId) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionId) {
+				bld.Add(pk);
+			}
+			return this.DeleteItem(bld.Build(), itemId);
+		}
+
+		private async Task<bool> DeleteItem(PartitionKey pk, string itemId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 
 			Exception? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
-					var resp = await this.Container.DeleteItemAsync<T>(itemId, new PartitionKey(partitionId));
+					var resp = await this.Container.DeleteItemAsync<T>(itemId, pk);
 					if (resp.StatusCode == System.Net.HttpStatusCode.NoContent) return true;
 					if (resp.StatusCode == System.Net.HttpStatusCode.OK) return true;
 					if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
@@ -302,13 +368,13 @@ namespace Corner49.Infra.DB {
 					} else if (err.StatusCode == System.Net.HttpStatusCode.NotFound) {
 						return false;
 					} else {
-						throw new DocumentException($"DeleteItem({partitionId},{itemId}) failed", err, err.StatusCode);
+						throw new DocumentException($"DeleteItem({pk},{itemId}) failed", err, err.StatusCode);
 					}
 				} catch (Exception err) {
-					throw new DocumentException($"DeleteItem({partitionId},{itemId}) failed", err);
+					throw new DocumentException($"DeleteItem({pk},{itemId}) failed", err);
 				}
 			}
-			throw new DocumentException($"DeleteItem({partitionId},{itemId}) failed", lastErr);
+			throw new DocumentException($"DeleteItem({pk},{itemId}) failed", lastErr);
 
 
 		}
@@ -316,14 +382,23 @@ namespace Corner49.Infra.DB {
 
 
 
+		public IQueryable<T> CreateQuery(string? partitionKey = null, int? maxItemCount = null) { 
+			return CreateQuery(new PartitionKey(partitionKey), maxItemCount);
+		}
+		public IQueryable<T> CreateQuery(string[] partitionKey, int? maxItemCount = null) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionKey) {
+				bld.Add(pk);
+			}
+			return CreateQuery(bld.Build(), maxItemCount);
+		}
 
 
-
-		public IQueryable<T> CreateQuery(string? partitionKey = null, int? maxItemCount = null) {
+		private IQueryable<T> CreateQuery(PartitionKey? partitionKey = null, int? maxItemCount = null) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			QueryRequestOptions queryOptions = new QueryRequestOptions();
-			if (partitionKey != null) queryOptions.PartitionKey = new PartitionKey(partitionKey);
+			if (partitionKey != null) queryOptions.PartitionKey = partitionKey;
 			if (maxItemCount != null) queryOptions.MaxItemCount = maxItemCount!;
 
 			return this.Container.GetItemLinqQueryable<T>(true, requestOptions: queryOptions);
@@ -392,16 +467,33 @@ namespace Corner49.Infra.DB {
 			return result;
 		}
 
-		public async Task<QueryResult<T>> Query(string? partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
+		public Task<QueryResult<T>> Query(string? partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
+			return this.Query(partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null, sql, continuationToken, maxItemCount, parameters, cancelToken);
+		}
+		public Task<QueryResult<T>> Query(string[] partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionKey) {
+				bld.Add(pk);
+			}
+			return this.Query(bld.Build(), sql, continuationToken, maxItemCount, parameters, cancelToken);
+		}
+
+		private async Task<QueryResult<T>> Query(PartitionKey? pk, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			QueryRequestOptions queryOptions = new QueryRequestOptions();
-			if (partitionKey != null) queryOptions.PartitionKey = new PartitionKey(partitionKey);
+			if (pk != null) queryOptions.PartitionKey = pk;
 			queryOptions.MaxItemCount = maxItemCount ?? -1;
 
 
 			string? token = Base64.Decode(continuationToken);
 			QueryDefinition def = new QueryDefinition(sql);
+			if (parameters != null) {
+				foreach (var kv in parameters) {
+					def.WithParameter(kv.Key, kv.Value);
+				}
+			}	
+			
 
 			QueryResult<T> result = new QueryResult<T>();
 			if (token == null) {
@@ -430,14 +522,23 @@ namespace Corner49.Infra.DB {
 		}
 
 
+		public Task Read(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
+			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
+			return  this.Read(pk, query, onRead, maxItemCount, cancelToken);
+		}
+		public Task Read(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionKey) {
+				bld.Add(pk);
+			}
+			return this.Read(bld.Build(), query, onRead, maxItemCount, cancelToken);
+		}
 
-
-
-		public async Task Read(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
+		private async Task Read(PartitionKey? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			QueryRequestOptions queryOptions = new QueryRequestOptions();
-			if (partitionKey != null) queryOptions.PartitionKey = new PartitionKey(partitionKey);
+			if (partitionKey != null) queryOptions.PartitionKey = partitionKey;
 			queryOptions.MaxItemCount = maxItemCount;
 
 
@@ -482,31 +583,32 @@ namespace Corner49.Infra.DB {
 		}
 
 
-		public async IAsyncEnumerable<M> ExecSQL<M>(string sql, [EnumeratorCancellation] CancellationToken cancelToken = default) {
-			QueryDefinition def = new QueryDefinition(sql);
 
 
-			using (FeedIterator<M> feedIterator = this.Container.GetItemQueryIterator<M>(def)) {
-				while (feedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					FeedResponse<M> response = await feedIterator.ReadNextAsync(cancelToken);
-
-					while (response.StatusCode == HttpStatusCode.TooManyRequests) {
-						await Task.Delay(TimeSpan.FromSeconds(5));
-						response = await feedIterator.ReadNextAsync(cancelToken);
-					}
-
-					foreach (var item in response) {
-						yield return item;
-					}
-				}
+		public IAsyncEnumerable<M> ExecSQL<M>(string? partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] CancellationToken cancelToken = default) {
+			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
+			return this.ExecSQL<M>(pk, sql, maxItemCount, parameters, cancelToken);
+		}
+		public IAsyncEnumerable<M> ExecSQL<M>(string[] partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] CancellationToken cancelToken = default) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionKey) {
+				bld.Add(pk);
 			}
+			return this.ExecSQL<M>(bld.Build(), sql, maxItemCount, parameters, cancelToken);
+
 		}
 
-		public async IAsyncEnumerable<M> ExecSQL<M>(string sql, string partitionKey, int? maxItemCount = null, [EnumeratorCancellation] CancellationToken cancelToken = default) {
+		private async IAsyncEnumerable<M> ExecSQL<M>(PartitionKey? partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] CancellationToken cancelToken = default) {
 			QueryDefinition def = new QueryDefinition(sql);
+			if (parameters != null) {
+				foreach (var kv in parameters) {
+					def.WithParameter(kv.Key, kv.Value);
+				}
+			}
+
 
 			QueryRequestOptions options = new QueryRequestOptions();
-			if (partitionKey != null) options.PartitionKey = new PartitionKey(partitionKey);
+			if (partitionKey != null) options.PartitionKey = partitionKey;
 			if (maxItemCount != null) options.MaxItemCount = maxItemCount;
 
 
@@ -526,12 +628,28 @@ namespace Corner49.Infra.DB {
 			}
 		}
 
+		public Task<string?> ReadSQL(string? partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
+			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
+			return this.ReadSQL(pk, sql, onRead, continuationToken, maxItemCount, parameters, cancelToken);
+		}
+		public Task<string?> ReadSQL(string[] partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionKey) {
+				bld.Add(pk);
+			}
+			return this.ReadSQL(bld.Build(), sql, onRead, continuationToken, maxItemCount, parameters, cancelToken);
+		}
 
-		public async Task<string?> ReadSQL(string sql, Func<T, Task<bool>> onRead, string? partitionKey = null, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
+		private async Task<string?> ReadSQL(PartitionKey? partitionKey, string sql, Func<T, Task<bool>> onRead,  string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
 			QueryDefinition def = new QueryDefinition(sql);
+			if (parameters != null) {
+				foreach (var kv in parameters) {
+					def.WithParameter(kv.Key, kv.Value);
+				}
+			}
 
 			QueryRequestOptions options = new QueryRequestOptions();
-			if (partitionKey != null) options.PartitionKey = new PartitionKey(partitionKey);
+			if (partitionKey != null) options.PartitionKey = partitionKey;
 			if (maxItemCount != null) options.MaxItemCount = maxItemCount;
 
 			string? token = Base64.Decode(continuationToken);
@@ -577,9 +695,31 @@ namespace Corner49.Infra.DB {
 		}
 
 
-		public async IAsyncEnumerable<JsonElement> RawSQL(string sql, [EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
+		public IAsyncEnumerable<JsonElement> RawSQL(string? partitionKey, string sql, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
+			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
+			return RawSQL(pk, sql, parameters, cancelToken);
+		}
+		public IAsyncEnumerable<JsonElement> RawSQL(string[] ? partitionKey, string sql, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionKey) {
+				bld.Add(pk);
+			}
+			return RawSQL(bld.Build(), sql, parameters, cancelToken);
+		}
 
-			using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(sql)) {
+
+		private async IAsyncEnumerable<JsonElement> RawSQL(PartitionKey? pk, string sql, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
+			QueryDefinition def = new QueryDefinition(sql);
+			if (parameters != null) {
+				foreach (var kv in parameters) {
+					def.WithParameter(kv.Key, kv.Value);
+				}
+			}
+
+			QueryRequestOptions options = new QueryRequestOptions();
+			if (pk != null) options.PartitionKey = pk;
+
+			using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(def, null, options)) {
 				while (feed.HasMoreResults) {
 					FeedResponse<object> response = await feed.ReadNextAsync(cancelToken);
 					foreach (var resp in response) {
