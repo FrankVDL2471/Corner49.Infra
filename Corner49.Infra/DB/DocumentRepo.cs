@@ -8,71 +8,407 @@ using System.Text.Json;
 
 namespace Corner49.Infra.DB {
 
-
-
+	/// <summary>
+	/// Repository interface for Azure Cosmos DB NoSQL API operations.
+	/// Provides CRUD operations, querying, and change feed capabilities.
+	/// </summary>
+	/// <typeparam name="T">The document type to store and retrieve from Cosmos DB.</typeparam>
+	/// <remarks>
+	/// PERFORMANCE BEST PRACTICES:
+	/// - Always specify partition keys to avoid expensive cross-partition queries
+	/// - Use async enumerable methods for large result sets to minimize memory usage
+	/// - Leverage LINQ queries with CreateQuery for type-safe, optimized queries
+	/// - Monitor RU consumption via OnDiagnostics callback
+	/// - Use UpsertItem instead of separate read/write operations when appropriate
+	/// - Implement continuation tokens for pagination in production scenarios
+	/// </remarks>
 	public interface IDocumentRepo<T> where T : class {
 
-
+		/// <summary>
+		/// Optional callback to capture diagnostic information for all operations.
+		/// Use this to monitor RU consumption, latency, and performance metrics.
+		/// </summary>
 		Action<DocumentDiagnostics>? OnDiagnostics { get; set; }
 
+		/// <summary>
+		/// Retrieves a single document by its partition key and item ID.
+		/// </summary>
+		/// <param name="paritionId">The partition key value (single partition key).</param>
+		/// <param name="itemId">The unique item ID within the partition.</param>
+		/// <returns>The document if found, otherwise null.</returns>
+		/// <remarks>
+		/// This is the most efficient way to retrieve a document (point read).
+		/// Typically consumes 1 RU for documents up to 1KB.
+		/// </remarks>
 		Task<T?> GetItem(string paritionId, string itemId);
+
+		/// <summary>
+		/// Retrieves a single document by its hierarchical partition key and item ID.
+		/// </summary>
+		/// <param name="paritionId">The hierarchical partition key values.</param>
+		/// <param name="itemId">The unique item ID within the partition.</param>
+		/// <returns>The document if found, otherwise null.</returns>
+		/// <remarks>
+		/// Use this overload for containers with hierarchical partition keys.
+		/// Order of partition key values must match the container definition.
+		/// </remarks>
 		Task<T?> GetItem(string[] paritionId, string itemId);
 
+		/// <summary>
+		/// Retrieves all documents within a partition or the entire container.
+		/// </summary>
+		/// <param name="paritionId">The partition key value, or null for cross-partition query.</param>
+		/// <returns>Async enumerable stream of documents.</returns>
+		/// <remarks>
+		/// WARNING: Cross-partition queries (null partitionKey) can be expensive.
+		/// Results are streamed to minimize memory usage. RU cost depends on result set size.
+		/// </remarks>
 		IAsyncEnumerable<T> GetItems(string? paritionId);
+
+		/// <summary>
+		/// Retrieves all documents within a hierarchical partition.
+		/// </summary>
+		/// <param name="paritionId">The hierarchical partition key values.</param>
+		/// <returns>Async enumerable stream of documents.</returns>
 		IAsyncEnumerable<T> GetItems(string[] paritionId);
 
+		/// <summary>
+		/// Creates a new document in the container.
+		/// </summary>
+		/// <param name="paritionId">The partition key value (single partition key).</param>
+		/// <param name="item">The document to create.</param>
+		/// <returns>The created document with server-generated properties.</returns>
+		/// <remarks>
+		/// Fails if a document with the same ID already exists.
+		/// Use UpsertItem if you want to create or replace.
+		/// </remarks>
 		Task<T> AddItem(string paritionId, T item);
+
+		/// <summary>
+		/// Creates a new document in a container with hierarchical partition keys.
+		/// </summary>
+		/// <param name="paritionId">The hierarchical partition key values.</param>
+		/// <param name="item">The document to create.</param>
+		/// <returns>The created document with server-generated properties.</returns>
 		Task<T> AddItem(string[] paritionId, T item);
 
+		/// <summary>
+		/// Creates or replaces a document (insert or update).
+		/// </summary>
+		/// <param name="paritionId">The partition key value (single partition key).</param>
+		/// <param name="item">The document to upsert.</param>
+		/// <param name="status">Optional callback to receive the HTTP status code (Created or OK).</param>
+		/// <returns>The upserted document.</returns>
+		/// <remarks>
+		/// More efficient than separate read + write operations.
+		/// Status code indicates whether item was created (201) or replaced (200).
+		/// </remarks>
 		Task<T> UpsertItem(string paritionId, T item, Action<HttpStatusCode>? status = null);
+
+		/// <summary>
+		/// Creates or replaces a document in a container with hierarchical partition keys.
+		/// </summary>
+		/// <param name="paritionId">The hierarchical partition key values.</param>
+		/// <param name="item">The document to upsert.</param>
+		/// <param name="status">Optional callback to receive the HTTP status code.</param>
+		/// <returns>The upserted document.</returns>
 		Task<T> UpsertItem(string[] paritionId, T item, Action<HttpStatusCode>? status = null);
 
+		/// <summary>
+		/// Partially updates a document using patch operations.
+		/// </summary>
+		/// <param name="partitionId">The partition key value (single partition key).</param>
+		/// <param name="itemId">The unique item ID to patch.</param>
+		/// <param name="patches">List of patch operations to apply.</param>
+		/// <returns>The updated document.</returns>
+		/// <remarks>
+		/// More efficient than replace for updating specific fields.
+		/// Reduces network payload and RU consumption compared to full document updates.
+		/// </remarks>
 		Task<T> PatchItem(string partitionId, string itemId, IReadOnlyList<PatchOperation> patches);
+
+		/// <summary>
+		/// Partially updates a document in a container with hierarchical partition keys.
+		/// </summary>
+		/// <param name="partitionId">The hierarchical partition key values.</param>
+		/// <param name="itemId">The unique item ID to patch.</param>
+		/// <param name="patches">List of patch operations to apply.</param>
+		/// <returns>The updated document.</returns>
 		Task<T> PatchItem(string[] partitionId, string itemId, IReadOnlyList<PatchOperation> patches);
 
+		/// <summary>
+		/// Deletes a document from the container.
+		/// </summary>
+		/// <param name="paritionId">The partition key value (single partition key).</param>
+		/// <param name="itemId">The unique item ID to delete.</param>
+		/// <returns>True if deleted, false if not found.</returns>
 		Task<bool> DeleteItem(string paritionId, string itemId);
+
+		/// <summary>
+		/// Deletes a document from a container with hierarchical partition keys.
+		/// </summary>
+		/// <param name="paritionId">The hierarchical partition key values.</param>
+		/// <param name="itemId">The unique item ID to delete.</param>
+		/// <returns>True if deleted, false if not found.</returns>
 		Task<bool> DeleteItem(string[] paritionId, string itemId);
 
-
+		/// <summary>
+		/// Creates a LINQ queryable for building type-safe queries.
+		/// </summary>
+		/// <param name="paritionKey">Optional partition key to scope the query, or null for cross-partition.</param>
+		/// <param name="maxItemCount">Maximum items per page. Controls memory usage and pagination.</param>
+		/// <returns>IQueryable for building LINQ queries.</returns>
+		/// <remarks>
+		/// Use this for type-safe, optimized queries with LINQ syntax.
+		/// WARNING: Null partitionKey enables cross-partition queries which can be expensive.
+		/// </remarks>
 		IQueryable<T> CreateQuery(string? paritionKey = null, int? maxItemCount = null);
+
+		/// <summary>
+		/// Creates a LINQ queryable scoped to a hierarchical partition.
+		/// </summary>
+		/// <param name="paritionKey">The hierarchical partition key values.</param>
+		/// <param name="maxItemCount">Maximum items per page.</param>
+		/// <returns>IQueryable for building LINQ queries.</returns>
 		IQueryable<T> CreateQuery(string[] paritionKey, int? maxItemCount = null);
 
-
+		/// <summary>
+		/// Executes a query and streams results through a callback function.
+		/// </summary>
+		/// <param name="partitionKey">Optional partition key, or null for cross-partition query.</param>
+		/// <param name="query">Function to build the LINQ query.</param>
+		/// <param name="onRead">Callback invoked for each document. Return false to stop iteration.</param>
+		/// <param name="maxItemCount">Maximum items per page.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <remarks>
+		/// Efficient for processing large result sets without loading all into memory.
+		/// The onRead callback receives the item and optional total count.
+		/// </remarks>
 		Task Read(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default);
+
+		/// <summary>
+		/// Executes a query with hierarchical partition key and streams results.
+		/// </summary>
+		/// <param name="partitionKey">The hierarchical partition key values.</param>
+		/// <param name="query">Function to build the LINQ query.</param>
+		/// <param name="onRead">Callback invoked for each document.</param>
+		/// <param name="maxItemCount">Maximum items per page.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
 		Task Read(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default);
 
+		/// <summary>
+		/// Executes a queryable and returns results as an async enumerable.
+		/// </summary>
+		/// <param name="qry">The IQueryable to execute.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Async enumerable stream of documents.</returns>
+		/// <remarks>
+		/// Use after building query with CreateQuery() for memory-efficient result streaming.
+		/// </remarks>
 		IAsyncEnumerable<T> GetQueryResults(IQueryable<T> qry, CancellationToken cancelToken = default);
 
+		/// <summary>
+		/// Executes a query using a DocumentFilter with pagination support.
+		/// </summary>
+		/// <param name="partitionKey">Optional partition key, or null for cross-partition query.</param>
+		/// <param name="filter">Filter object containing query logic and pagination tokens.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Query result with data and continuation token for next page.</returns>
 		Task<QueryResult<T>> Filter(string? partitionKey, DocumentFilter<T> filter, CancellationToken cancelToken = default);
+
+		/// <summary>
+		/// Executes a LINQ query with pagination support.
+		/// </summary>
+		/// <param name="partitionKey">Optional partition key, or null for cross-partition query.</param>
+		/// <param name="query">Function to build the LINQ query.</param>
+		/// <param name="continuationToken">Token from previous query for pagination.</param>
+		/// <param name="maxItemCount">Maximum items to return.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Query result with data, total count, and continuation token.</returns>
+		/// <remarks>
+		/// Use continuationToken for efficient pagination.
+		/// TotalCount is only calculated on first page (when continuationToken is null).
+		/// </remarks>
 		Task<QueryResult<T>> Query(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
+
+		/// <summary>
+		/// Executes a LINQ query with hierarchical partition key and pagination.
+		/// </summary>
+		/// <param name="partitionKey">The hierarchical partition key values.</param>
+		/// <param name="query">Function to build the LINQ query.</param>
+		/// <param name="continuationToken">Token from previous query for pagination.</param>
+		/// <param name="maxItemCount">Maximum items to return.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Query result with data and continuation token.</returns>
 		Task<QueryResult<T>> Query(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
 
+		/// <summary>
+		/// Executes a SQL query with pagination support.
+		/// </summary>
+		/// <param name="partitionKey">Optional partition key, or null for cross-partition query.</param>
+		/// <param name="sql">SQL query string. Use @paramName for parameterized queries.</param>
+		/// <param name="continuationToken">Token from previous query for pagination.</param>
+		/// <param name="maxItemCount">Maximum items to return.</param>
+		/// <param name="parameters">Query parameters (key = @paramName, value = param value).</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Query result with data and continuation token.</returns>
+		/// <remarks>
+		/// Always use parameterized queries to prevent SQL injection.
+		/// Example: sql="SELECT * FROM c WHERE c.status = @status", parameters={"@status", "active"}
+		/// </remarks>
 		Task<QueryResult<T>> Query(string? partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+
+		/// <summary>
+		/// Executes a SQL query with hierarchical partition key and pagination.
+		/// </summary>
+		/// <param name="partitionKey">The hierarchical partition key values.</param>
+		/// <param name="sql">SQL query string with parameters.</param>
+		/// <param name="continuationToken">Token from previous query for pagination.</param>
+		/// <param name="maxItemCount">Maximum items to return.</param>
+		/// <param name="parameters">Query parameters.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Query result with data and continuation token.</returns>
 		Task<QueryResult<T>> Query(string[] partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 
+		/// <summary>
+		/// Executes a SQL query and returns results as an async enumerable with custom projection.
+		/// </summary>
+		/// <typeparam name="M">The result type (can be different from T for projections).</typeparam>
+		/// <param name="partitionKey">Optional partition key, or null for cross-partition query.</param>
+		/// <param name="sql">SQL query string with parameters.</param>
+		/// <param name="maxItemCount">Maximum items per page.</param>
+		/// <param name="parameters">Query parameters.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Async enumerable stream of results.</returns>
+		/// <remarks>
+		/// Use for memory-efficient processing of large result sets.
+		/// Supports custom projections (e.g., SELECT c.name, c.status FROM c).
+		/// </remarks>
 		IAsyncEnumerable<M> ExecSQL<M>(string? partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+
+		/// <summary>
+		/// Executes a SQL query with hierarchical partition key and returns results as async enumerable.
+		/// </summary>
+		/// <typeparam name="M">The result type.</typeparam>
+		/// <param name="partitionKey">The hierarchical partition key values.</param>
+		/// <param name="sql">SQL query string with parameters.</param>
+		/// <param name="maxItemCount">Maximum items per page.</param>
+		/// <param name="parameters">Query parameters.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Async enumerable stream of results.</returns>
 		IAsyncEnumerable<M> ExecSQL<M>(string[] partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 
+		/// <summary>
+		/// Executes a SQL query and streams results through a callback function.
+		/// </summary>
+		/// <param name="partitionKey">Optional partition key, or null for cross-partition query.</param>
+		/// <param name="sql">SQL query string with parameters.</param>
+		/// <param name="onRead">Callback invoked for each document. Return false to stop iteration.</param>
+		/// <param name="continuationToken">Token from previous query for pagination.</param>
+		/// <param name="maxItemCount">Maximum items per page.</param>
+		/// <param name="parameters">Query parameters.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Continuation token for next page, or null if complete.</returns>
+		/// <remarks>
+		/// Efficient for processing results page by page.
+		/// Return continuation token to caller for pagination support.
+		/// </remarks>
 		Task<string?> ReadSQL(string? partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+
+		/// <summary>
+		/// Executes a SQL query with hierarchical partition key and streams results.
+		/// </summary>
+		/// <param name="partitionKey">The hierarchical partition key values.</param>
+		/// <param name="sql">SQL query string with parameters.</param>
+		/// <param name="onRead">Callback invoked for each document.</param>
+		/// <param name="continuationToken">Token from previous query for pagination.</param>
+		/// <param name="maxItemCount">Maximum items per page.</param>
+		/// <param name="parameters">Query parameters.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Continuation token for next page.</returns>
 		Task<string?> ReadSQL(string[] partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+
+		/// <summary>
+		/// Counts documents matching a WHERE clause condition.
+		/// </summary>
+		/// <param name="where">WHERE clause condition (without the WHERE keyword).</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Number of matching documents, or -1 on error.</returns>
+		/// <remarks>
+		/// WARNING: This performs a cross-partition query and can be expensive.
+		/// Consider using Query with Take for pagination instead of counting all results.
+		/// </remarks>
 		Task<int> CountSQL(string where, System.Threading.CancellationToken cancelToken = default);
 
+		/// <summary>
+		/// Executes a SQL query and returns raw JSON elements.
+		/// </summary>
+		/// <param name="partitionKey">Optional partition key, or null for cross-partition query.</param>
+		/// <param name="sql">SQL query string with parameters.</param>
+		/// <param name="parameters">Query parameters.</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Async enumerable stream of JsonElement objects.</returns>
+		/// <remarks>
+		/// Use for dynamic queries where result schema is not known at compile time.
+		/// Returns raw JSON for maximum flexibility.
+		/// </remarks>
 		IAsyncEnumerable<JsonElement> RawSQL(string? partitionKey, string sql, Dictionary<string, object>? parameters = null, System.Threading.CancellationToken cancelToken = default);
 
+		/// <summary>
+		/// Creates a change feed processor to monitor container changes in real-time.
+		/// </summary>
+		/// <param name="changeHandler">Callback invoked when changes are detected.</param>
+		/// <param name="leaseName">Name of the lease container (created if doesn't exist).</param>
+		/// <param name="processorName">Unique name for this processor instance.</param>
+		/// <param name="instanceName">Instance identifier for distributed processing.</param>
+		/// <param name="onRelease">Optional callback when lease is released.</param>
+		/// <param name="onError">Optional error handler callback.</param>
+		/// <returns>ChangeFeedProcessor instance. Call StartAsync() to begin monitoring.</returns>
+		/// <remarks>
+		/// Change feed enables event-driven architectures and data synchronization.
+		/// Multiple instances can process changes in parallel for scalability.
+		/// </remarks>
 		Task<ChangeFeedProcessor> GetChangeFeedProcessor(Container.ChangesHandler<T> changeHandler, string leaseName = "changeLeases", string? processorName = null, string? instanceName = null,
 						Func<Task>? onRelease = null,
 						Func<Exception, Task>? onError = null);
 
+		/// <summary>
+		/// Creates a change feed processor that provides full change feed context.
+		/// </summary>
+		/// <param name="changeHandler">Callback with full ChangeFeedProcessorContext.</param>
+		/// <param name="leaseName">Name of the lease container.</param>
+		/// <param name="processorName">Unique name for this processor instance.</param>
+		/// <param name="instanceName">Instance identifier for distributed processing.</param>
+		/// <param name="onRelease">Optional callback when lease is released.</param>
+		/// <param name="onError">Optional error handler callback.</param>
+		/// <returns>ChangeFeedProcessor instance.</returns>
+		/// <remarks>
+		/// Use this overload when you need access to change feed context and metadata.
+		/// </remarks>
 		Task<ChangeFeedProcessor> GetAllChangesFeedProcessor(Container.ChangeFeedHandler<T> changeHandler, string leaseName = "changeLeases", string? processorName = null, string? instanceName = null,
 				Func<Task>? onRelease = null,
 				Func<Exception, Task>? onError = null);
 	}
 
+	/// <summary>
+	/// Interface for initializing document repositories.
+	/// Used internally to create databases and containers.
+	/// </summary>
 	public interface IDocumentRepoInitializer {
 
+		/// <summary>
+		/// Initializes the database and container if they don't exist.
+		/// </summary>
+		/// <returns>Async task.</returns>
 		Task Init();
 	}
 
+	/// <summary>
+	/// Implementation of IDocumentRepo for Azure Cosmos DB NoSQL API operations.
+	/// See <see cref="IDocumentRepo{T}"/> for detailed method documentation.
+	/// </summary>
+	/// <typeparam name="T">The document type.</typeparam>
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 	public class DocumentRepo<T> : IDocumentRepoInitializer, IDocumentRepo<T> where T : class {
 
 		//		private readonly IConfiguration _config;
@@ -83,7 +419,13 @@ namespace Corner49.Infra.DB {
 		private readonly string _containerName;
 		private readonly string[] _partitionKey;
 
-
+		/// <summary>
+		/// Initializes a new instance of the DocumentRepo class.
+		/// </summary>
+		/// <param name="client">The CosmosClient instance.</param>
+		/// <param name="dbName">Database name.</param>
+		/// <param name="containerName">Container name.</param>
+		/// <param name="paritionKey">Partition key path(s).</param>
 		public DocumentRepo(CosmosClient client, string dbName, string containerName, params string[] paritionKey) {
 			_client = client;
 
@@ -99,6 +441,9 @@ namespace Corner49.Infra.DB {
 		private Database? _database;
 		private Container? _container;
 
+		/// <summary>
+		/// Gets the Cosmos DB container instance.
+		/// </summary>
 		protected Container Container {
 			get {
 				if (_database == null) _database = _client.GetDatabase(_dbName);
@@ -111,8 +456,14 @@ namespace Corner49.Infra.DB {
 			return this.Init(null, null);
 		}
 
+		/// <inheritdoc />
 		public Action<DocumentDiagnostics>? OnDiagnostics { get; set; }
 
+		/// <summary>
+		/// Initializes the database and container with optional throughput configuration.
+		/// </summary>
+		/// <param name="databaseThroughput">Optional autoscale throughput for database.</param>
+		/// <param name="containerThroughput">Optional autoscale throughput for container.</param>
 		public async Task Init(int? databaseThroughput = null, int? containerThroughput = null) {
 			for (int retry = 0; retry <= 5; retry++) {
 				try {
@@ -150,7 +501,7 @@ namespace Corner49.Infra.DB {
 			}
 		}
 
-
+		/// <inheritdoc />
 		public async Task<ChangeFeedProcessor> GetChangeFeedProcessor(Container.ChangesHandler<T> changeHandler, string leaseName = "changeLeases", string? processorName = null, string? instanceName = null,
 						Func<Task>? onRelease = null,
 						Func<Exception, Task>? onError = null) {
@@ -174,6 +525,7 @@ namespace Corner49.Infra.DB {
 			return bld.Build();
 		}
 
+		/// <inheritdoc />
 		public async Task<ChangeFeedProcessor> GetAllChangesFeedProcessor(Container.ChangeFeedHandler<T> changeHandler, string leaseName = "changeLeases", string? processorName = null, string? instanceName = null,
 				Func<Task>? onRelease = null,
 				Func<Exception, Task>? onError = null) {
@@ -198,11 +550,11 @@ namespace Corner49.Infra.DB {
 			return bld.Build();
 		}
 
-
-
+		/// <inheritdoc />
 		public Task<T?> GetItem(string partitionId, string itemId) {
 			return this.GetItem(new PartitionKey(partitionId), itemId);
 		}
+		/// <inheritdoc />
 		public Task<T?> GetItem(string[] partitionId, string itemId) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionId) {
@@ -254,22 +606,23 @@ namespace Corner49.Infra.DB {
 			throw new DocumentException($"GetItem({pk},{itemId}) failed", lastErr);
 		}
 
-
-
-
+		/// <inheritdoc />
 		public IAsyncEnumerable<T> GetItems(string? paritionId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 			return this.GetQueryResults(this.CreateQuery(paritionId));
 		}
 
+		/// <inheritdoc />
 		public IAsyncEnumerable<T> GetItems(string[] paritionId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 			return this.GetQueryResults(this.CreateQuery(paritionId));
 		}
 
+		/// <inheritdoc />
 		public Task<T> AddItem(string paritionId, T item) {
 			return this.AddItem(new PartitionKey(paritionId), item);
 		}
+		/// <inheritdoc />
 		public Task<T> AddItem(string[] partitionId, T item) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionId) {
@@ -318,10 +671,11 @@ namespace Corner49.Infra.DB {
 			throw new DocumentException($"AddItem failed", lastErr);
 		}
 
-
+		/// <inheritdoc />
 		public Task<T> UpsertItem(string paritionId, T item, Action<HttpStatusCode>? status = null) {
 			return this.UpsertItem(new PartitionKey(paritionId), item, status);
 		}
+		/// <inheritdoc />
 		public Task<T> UpsertItem(string[] partitionId, T item, Action<HttpStatusCode>? status = null) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionId) {
@@ -370,9 +724,11 @@ namespace Corner49.Infra.DB {
 			throw new DocumentException($"UpsertItem failed", lastErr);
 		}
 
+		/// <inheritdoc />
 		public Task<T> PatchItem(string paritionId, string itemId, IReadOnlyList<PatchOperation> patches) {
 			return this.PatchItem(new PartitionKey(paritionId), itemId, patches);
 		}
+		/// <inheritdoc />
 		public Task<T> PatchItem(string[] partitionId, string itemId, IReadOnlyList<PatchOperation> patches) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionId) {
@@ -422,9 +778,11 @@ namespace Corner49.Infra.DB {
 
 		}
 
+		/// <inheritdoc />
 		public Task<bool> DeleteItem(string paritionId, string itemId) {
 			return this.DeleteItem(new PartitionKey(paritionId), itemId);
 		}
+		/// <inheritdoc />
 		public Task<bool> DeleteItem(string[] partitionId, string itemId) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionId) {
@@ -479,12 +837,11 @@ namespace Corner49.Infra.DB {
 
 		}
 
-
-
-
+		/// <inheritdoc />
 		public IQueryable<T> CreateQuery(string? partitionKey = null, int? maxItemCount = null) {
 			return CreateQuery(new PartitionKey(partitionKey), maxItemCount);
 		}
+		/// <inheritdoc />
 		public IQueryable<T> CreateQuery(string[] partitionKey, int? maxItemCount = null) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionKey) {
@@ -504,8 +861,9 @@ namespace Corner49.Infra.DB {
 			return this.Container.GetItemLinqQueryable<T>(true, requestOptions: queryOptions);
 		}
 
-
-
+		/// <summary>
+		/// Reads documents using a filter with callback processing.
+		/// </summary>
 		public async Task<string?> Read(string? partitionKey, DocumentFilter<T> filter, Func<T, Task> onRead, CancellationToken cancelToken = default) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
@@ -548,15 +906,17 @@ namespace Corner49.Infra.DB {
 			return token;
 		}
 
-
+		/// <inheritdoc />
 		public Task<QueryResult<T>> Filter(string? partitionKey, DocumentFilter<T> filter, CancellationToken cancelToken = default) {
 			return this.Query(partitionKey, (qry) => filter.Build(qry), filter.ContinuationToken, filter.Take, cancelToken);
 		}
 
+		/// <inheritdoc />
 		public Task<QueryResult<T>> Query(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
 			return this.Query(pk, query, continuationToken, maxItemCount, cancelToken);
 		}
+		/// <inheritdoc />
 		public Task<QueryResult<T>> Query(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionKey) {
@@ -598,9 +958,11 @@ namespace Corner49.Infra.DB {
 			return result;
 		}
 
+		/// <inheritdoc />
 		public Task<QueryResult<T>> Query(string? partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
 			return this.Query(partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null, sql, continuationToken, maxItemCount, parameters, cancelToken);
 		}
+		/// <inheritdoc />
 		public Task<QueryResult<T>> Query(string[] partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionKey) {
@@ -669,11 +1031,12 @@ namespace Corner49.Infra.DB {
 			return result;
 		}
 
-
+		/// <inheritdoc />
 		public Task Read(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
 			return this.Read(pk, query, onRead, maxItemCount, cancelToken);
 		}
+		/// <inheritdoc />
 		public Task Read(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionKey) {
@@ -714,11 +1077,7 @@ namespace Corner49.Infra.DB {
 			}
 		}
 
-
-
-
-
-
+		/// <inheritdoc />
 		public async IAsyncEnumerable<T> GetQueryResults(IQueryable<T> qry, [EnumeratorCancellation] CancellationToken cancelToken = default) {
 			using (FeedIterator<T> FeedIterator = qry.ToFeedIterator()) {
 
@@ -737,7 +1096,8 @@ namespace Corner49.Infra.DB {
 			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
 			return this.ExecSQL<M>(pk, sql, maxItemCount, parameters, cancelToken);
 		}
-		public IAsyncEnumerable<M> ExecSQL<M>(string[] partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] CancellationToken cancelToken = default) {
+		/// <inheritdoc />
+		public IAsyncEnumerable<M> ExecSQL<M>(string[] partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionKey) {
 				bld.Add(pk);
@@ -813,10 +1173,12 @@ namespace Corner49.Infra.DB {
 			}
 		}
 
+		/// <inheritdoc />
 		public Task<string?> ReadSQL(string? partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
 			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
 			return this.ReadSQL(pk, sql, onRead, continuationToken, maxItemCount, parameters, cancelToken);
 		}
+		/// <inheritdoc />
 		public Task<string?> ReadSQL(string[] partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionKey) {
@@ -877,7 +1239,7 @@ namespace Corner49.Infra.DB {
 			return nextToken;
 		}
 
-
+		/// <inheritdoc />
 		public async Task<int> CountSQL(string where, System.Threading.CancellationToken cancelToken = default) {
 			string sql = "select count(1) from c";
 			if (!string.IsNullOrEmpty(where)) {
@@ -917,12 +1279,15 @@ namespace Corner49.Infra.DB {
 			return -1;
 		}
 
-
-		public IAsyncEnumerable<JsonElement> RawSQL(string? partitionKey, string sql, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
+		/// <inheritdoc />
+		public IAsyncEnumerable<JsonElement> RawSQL(string? partitionKey, string sql, Dictionary<string, object>? parameters = null, System.Threading.CancellationToken cancelToken = default) {
 			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
 			return RawSQL(pk, sql, parameters, cancelToken);
 		}
-		public IAsyncEnumerable<JsonElement> RawSQL(string[]? partitionKey, string sql, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
+		/// <summary>
+		/// Executes raw SQL with hierarchical partition key.
+		/// </summary>
+		public IAsyncEnumerable<JsonElement> RawSQL(string[]? partitionKey, string sql, Dictionary<string, object>? parameters = null, System.Threading.CancellationToken cancelToken = default) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionKey) {
 				bld.Add(pk);
@@ -974,6 +1339,12 @@ namespace Corner49.Infra.DB {
 			}
 		}
 
+		/// <summary>
+		/// Performs bulk insert of items with automatic partition key extraction.
+		/// </summary>
+		/// <param name="items">Items to insert.</param>
+		/// <param name="getPartitionKey">Function to extract partition key from item.</param>
+		/// <param name="cancellationToken">Cancellation token.</param>
 		public async Task BulkInsert(IAsyncEnumerable<T> items, Func<T, string> getPartitionKey, CancellationToken cancellationToken = default) {
 			var container = this.Container;
 
@@ -1055,7 +1426,7 @@ namespace Corner49.Infra.DB {
 			await Task.WhenAll(tasks);
 		}
 
-
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 	}
 
 

@@ -5,8 +5,7 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
-    <Title>Corner49 Infra</Title>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>    <GenerateDocumentationFile>true</GenerateDocumentationFile>    <Title>Corner49 Infra</Title>
     <Authors>Frank Vanderlinden</Authors>
     <Description>An opinionated set of infrastructure libraries for .Net applications </Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>

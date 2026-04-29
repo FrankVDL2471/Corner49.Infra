@@ -1,6 +1,7 @@
 ﻿using Corner49.Infra.Tools;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 
 namespace Corner49.Infra.DB {
 
@@ -14,7 +15,10 @@ namespace Corner49.Infra.DB {
 
 	public class DocumentDB : IDocumentDB {
 
-		private CosmosClient _client;
+		// Static cache to ensure CosmosClient instances are reused (singleton pattern)
+		private static readonly ConcurrentDictionary<string, CosmosClient> _clients = new ConcurrentDictionary<string, CosmosClient>();
+
+		private CosmosClient _client = null!;
 		private readonly DocumentDBOptions _options;
 
 		public DocumentDB(IOptions<DocumentDBOptions> options) {
@@ -34,16 +38,22 @@ namespace Corner49.Infra.DB {
 
 
 		private void Connect() {
-			CosmosClientOptions options = new CosmosClientOptions();
-			options.UseSystemTextJsonSerializerWithOptions = JsonHelper.Options;
-			options.ConnectionMode = _options.DirectMode ? ConnectionMode.Direct : ConnectionMode.Gateway;
+			// Create a unique cache key based on connection string and configuration
+			string cacheKey = $"{_options.ConnectString}|{_options.DirectMode}";
 
-			if (options.ConnectionMode == ConnectionMode.Direct) {
-				options.IdleTcpConnectionTimeout = TimeSpan.FromHours(1);
-			}
-			options.AllowBulkExecution = true;
+			// Reuse existing client if available, otherwise create new one
+			_client = _clients.GetOrAdd(cacheKey, key => {
+				CosmosClientOptions options = new CosmosClientOptions();
+				options.UseSystemTextJsonSerializerWithOptions = JsonHelper.Options;
+				options.ConnectionMode = _options.DirectMode ? ConnectionMode.Direct : ConnectionMode.Gateway;
 
-			_client = new CosmosClient(_options.ConnectString, options);
+				if (options.ConnectionMode == ConnectionMode.Direct) {
+					options.IdleTcpConnectionTimeout = TimeSpan.FromHours(1);
+				}
+				options.AllowBulkExecution = true;
+
+				return new CosmosClient(_options.ConnectString, options);
+			});
 		}
 
 
