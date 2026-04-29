@@ -16,31 +16,45 @@ namespace Corner49.Infra.DB {
 		Action<DocumentDiagnostics>? OnDiagnostics { get; set; }
 
 		Task<T?> GetItem(string paritionId, string itemId);
+		Task<T?> GetItem(string[] paritionId, string itemId);
 
 		IAsyncEnumerable<T> GetItems(string? paritionId);
+		IAsyncEnumerable<T> GetItems(string[] paritionId);
+
 		Task<T> AddItem(string paritionId, T item);
+		Task<T> AddItem(string[] paritionId, T item);
 
 		Task<T> UpsertItem(string paritionId, T item, Action<HttpStatusCode>? status = null);
+		Task<T> UpsertItem(string[] paritionId, T item, Action<HttpStatusCode>? status = null);
 
 		Task<T> PatchItem(string partitionId, string itemId, IReadOnlyList<PatchOperation> patches);
+		Task<T> PatchItem(string[] partitionId, string itemId, IReadOnlyList<PatchOperation> patches);
 
 		Task<bool> DeleteItem(string paritionId, string itemId);
+		Task<bool> DeleteItem(string[] paritionId, string itemId);
 
 
 		IQueryable<T> CreateQuery(string? paritionKey = null, int? maxItemCount = null);
+		IQueryable<T> CreateQuery(string[] paritionKey, int? maxItemCount = null);
 
 
 		Task Read(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default);
+		Task Read(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default);
+
 		IAsyncEnumerable<T> GetQueryResults(IQueryable<T> qry, CancellationToken cancelToken = default);
 
 		Task<QueryResult<T>> Filter(string? partitionKey, DocumentFilter<T> filter, CancellationToken cancelToken = default);
 		Task<QueryResult<T>> Query(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
+		Task<QueryResult<T>> Query(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
 
 		Task<QueryResult<T>> Query(string? partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+		Task<QueryResult<T>> Query(string[] partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 
 		IAsyncEnumerable<M> ExecSQL<M>(string? partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+		IAsyncEnumerable<M> ExecSQL<M>(string[] partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 
 		Task<string?> ReadSQL(string? partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+		Task<string?> ReadSQL(string[] partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 		Task<int> CountSQL(string where, System.Threading.CancellationToken cancelToken = default);
 
 		IAsyncEnumerable<JsonElement> RawSQL(string? partitionKey, string sql, Dictionary<string, object>? parameters = null, System.Threading.CancellationToken cancelToken = default);
@@ -244,6 +258,11 @@ namespace Corner49.Infra.DB {
 
 
 		public IAsyncEnumerable<T> GetItems(string? paritionId) {
+			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
+			return this.GetQueryResults(this.CreateQuery(paritionId));
+		}
+
+		public IAsyncEnumerable<T> GetItems(string[] paritionId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 			return this.GetQueryResults(this.CreateQuery(paritionId));
 		}
@@ -534,11 +553,25 @@ namespace Corner49.Infra.DB {
 			return this.Query(partitionKey, (qry) => filter.Build(qry), filter.ContinuationToken, filter.Take, cancelToken);
 		}
 
-		public async Task<QueryResult<T>> Query(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
+		public Task<QueryResult<T>> Query(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
+			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
+			return this.Query(pk, query, continuationToken, maxItemCount, cancelToken);	
+		}
+		public Task<QueryResult<T>> Query(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionKey) {
+				bld.Add(pk);
+			}
+
+			return Query(bld.Build(), query, continuationToken, maxItemCount, cancelToken);
+		}
+
+
+		private async Task<QueryResult<T>> Query(PartitionKey? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			QueryRequestOptions queryOptions = new QueryRequestOptions();
-			if (partitionKey != null) queryOptions.PartitionKey = new PartitionKey(partitionKey);
+			if (partitionKey != null) queryOptions.PartitionKey = partitionKey;
 			queryOptions.MaxItemCount = maxItemCount ?? -1;
 
 

@@ -9,8 +9,8 @@ namespace Corner49.Infra.DB {
 	public interface IDocumentDB {
 
 
-		DocumentRepo<T> GetRepo<T>(string dbName, string tblName, string paritionKey) where T : class;
-		DocumentRepo<T> GetRepo<T>(string tblName, string paritionKey) where T : class;
+		DocumentRepo<T> GetRepo<T>(string dbName, string tblName, params string[] paritionKey) where T : class;
+		DocumentRepo<T> GetRepo<T>(string tblName, params string[] paritionKey) where T : class;
 
 	}
 
@@ -49,12 +49,12 @@ namespace Corner49.Infra.DB {
 		}
 
 
-		public DocumentRepo<T> GetRepo<T>(string dbName, string tblName, string paritionKey) where T : class {
-			return new DocumentRepo<T>(_client, dbName, tblName, paritionKey);
+		public DocumentRepo<T> GetRepo<T>(string dbName, string tblName, params string[] paritionKey) where T : class {
+			return new DocumentRepo<T>(_client, dbName, tblName,  paritionKey);
 		}
 
 
-		public DocumentRepo<T> GetRepo<T>(string tblName, string paritionKey) where T : class {
+		public DocumentRepo<T> GetRepo<T>(string tblName, params string[] paritionKey) where T : class {
 			return new DocumentRepo<T>(_client, _options.DatabaseName, tblName, paritionKey);
 		}
 
