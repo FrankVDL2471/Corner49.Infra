@@ -30,7 +30,7 @@ namespace Corner49.Infra.Helpers {
 			using SKImage scaledImage = SKImage.FromBitmap(scaledBitmap);
 			using SKData data = scaledImage.Encode(ext, quality);
 
-			
+
 
 			return (data.ToArray(), height, width);
 		}

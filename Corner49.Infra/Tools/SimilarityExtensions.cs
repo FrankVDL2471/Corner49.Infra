@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Corner49.Infra.Tools {
+﻿namespace Corner49.Infra.Tools {
 	public static class SimilarityExtensions {
 		/// <summary>
 		/// Returns the number of steps required to transform the source string

@@ -3,7 +3,7 @@
 	public interface IJobConfig {
 		string ConnectString { get; set; }
 		string DbName { get; set; }
-		string ContainerName { get; set; }	
+		string ContainerName { get; set; }
 		bool UseLocalQueue { get; set; }
 
 		string? QueueName { get; set; }
@@ -11,7 +11,7 @@
 
 		bool DisableAutomaticRestart { get; set; }
 
-		bool EnableDashboard { get; set; }	
+		bool EnableDashboard { get; set; }
 
 		int? WorkerCount { get; set; }
 	}
@@ -34,7 +34,7 @@
 
 		public bool UseSqlServer { get; set; }
 
-		public bool DisableAutomaticRestart { get; set; }	
+		public bool DisableAutomaticRestart { get; set; }
 
 		public bool EnableDashboard { get; set; }
 

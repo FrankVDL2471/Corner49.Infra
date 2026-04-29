@@ -20,4 +20,3 @@ namespace Corner49.Infra.DB {
 
 
 }
- 

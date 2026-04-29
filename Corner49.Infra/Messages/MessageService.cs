@@ -20,7 +20,7 @@ namespace Corner49.Infra.Messages {
 
 
 		private ServiceBusMessageSender GetSender(MessageBase msg) {
-			return msg.UseQueue? _serviceBus.GetQueueSender(msg.Name, TimeSpan.FromSeconds(20)) : _serviceBus.GetTopicSender(msg.Name, TimeSpan.FromSeconds(20));
+			return msg.UseQueue ? _serviceBus.GetQueueSender(msg.Name, TimeSpan.FromSeconds(20)) : _serviceBus.GetTopicSender(msg.Name, TimeSpan.FromSeconds(20));
 		}
 
 		public Task Send(T msg, DateTimeOffset? enqueueTime = null) {

@@ -1,5 +1,4 @@
 ﻿using Hangfire;
-using Hangfire.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
@@ -40,7 +39,7 @@ namespace Corner49.Infra.Jobs {
 
 			try {
 				if (queue == null) {
-					this.Id =  _jobClient.Enqueue(() => Run(name, args, cancellationToken));
+					this.Id = _jobClient.Enqueue(() => Run(name, args, cancellationToken));
 				} else {
 					this.Id = _jobClient.Enqueue(queue, () => Run(name, args, cancellationToken));
 				}
@@ -62,7 +61,7 @@ namespace Corner49.Infra.Jobs {
 
 			try {
 				await Execute(args, cancellationToken);
-			} catch(Exception err) {
+			} catch (Exception err) {
 				_logger.LogError(err, $"Job {fullName} failed : {err.Message}");
 			}
 		}
@@ -99,12 +98,12 @@ namespace Corner49.Infra.Jobs {
 			//Kill jobs in processing
 			int skip = 0;
 			while (true) {
-				var jobs = monitor.ProcessingJobs(skip, 100);				
-				foreach (var job in jobs) {					
+				var jobs = monitor.ProcessingJobs(skip, 100);
+				foreach (var job in jobs) {
 					if (job.Value.Job.Args.Count < 1) continue;
 					if ((string)job.Value.Job.Args[0] != name) continue;
 
-					yield return job.Key; 
+					yield return job.Key;
 				}
 				if (jobs.Count < 100) break;
 				skip += 100;

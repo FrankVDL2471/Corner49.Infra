@@ -21,9 +21,9 @@ namespace Corner49.Infra.Tools {
 			options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 			options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 			options.WriteIndented = true;
-			options.NumberHandling = JsonNumberHandling.AllowReadingFromString;			
+			options.NumberHandling = JsonNumberHandling.AllowReadingFromString;
 			options.Converters.Add(new JsonStringEnumConverter());
-			options.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;	
+			options.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
 			return options;
 		}
 

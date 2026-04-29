@@ -1,5 +1,4 @@
-﻿using Azure.Messaging.EventGrid;
-using Azure.Messaging.ServiceBus;
+﻿using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
 
 namespace Corner49.Infra.ServiceBus {

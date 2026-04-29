@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Corner49.Infra.ServiceBus {
+﻿namespace Corner49.Infra.ServiceBus {
 	public class ServiceBusConfiguration {
 
 		public static string SectionName = "ServiceBus";
@@ -29,7 +23,7 @@ namespace Corner49.Infra.ServiceBus {
 		/// Max DeliveryCount
 		/// Default = 10, Minimal = 1
 		/// </summary>
-		public int MaxDeliveryCount { get; set; }	
+		public int MaxDeliveryCount { get; set; }
 
 
 		/// <summary>

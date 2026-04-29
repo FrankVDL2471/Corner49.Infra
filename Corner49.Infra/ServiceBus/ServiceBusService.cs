@@ -1,6 +1,5 @@
 ﻿using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
-using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -181,23 +180,23 @@ namespace Corner49.Infra.ServiceBus {
 			long count = await this.GetMessageCount(options) ?? 0;
 			var sender = _client.CreateSender(nm);
 
-			var proc =  _client.CreateProcessor(nm, opt);			
+			var proc = _client.CreateProcessor(nm, opt);
 			proc.ProcessMessageAsync += async (args) => {
 
-				var msg =   new ServiceBusMessage(args.Message.Body);
+				var msg = new ServiceBusMessage(args.Message.Body);
 				msg.MessageId = args.Message.MessageId;
 				msg.Subject = args.Message.Subject;
-				msg.To = args.Message.To;					
-				foreach(var prop in args.Message.ApplicationProperties) {
+				msg.To = args.Message.To;
+				foreach (var prop in args.Message.ApplicationProperties) {
 					if (msg.ApplicationProperties.ContainsKey(prop.Key)) {
 						msg.ApplicationProperties[prop.Key] = prop.Value;
 					} else {
-						msg.ApplicationProperties.Add(prop.Key, prop.Value);	
-					}					
-				}	
+						msg.ApplicationProperties.Add(prop.Key, prop.Value);
+					}
+				}
 				await sender.SendMessageAsync(msg);
 
-				Interlocked.Decrement(ref count);	
+				Interlocked.Decrement(ref count);
 			};
 			proc.ProcessErrorAsync += (args) => {
 				_logger.LogError(args.Exception, $"ResubmitDeadletterQueue  Failed Error: {args.Exception.Message}");
@@ -207,7 +206,7 @@ namespace Corner49.Infra.ServiceBus {
 
 			await proc.StartProcessingAsync();
 
-			while(true) {
+			while (true) {
 				var cnt = Interlocked.Read(ref count);
 				if (cnt <= 0) break;
 				await Task.Delay(500);
@@ -386,7 +385,7 @@ namespace Corner49.Infra.ServiceBus {
 					if (this.DeveloperMode) {
 						queueName += "." + Environment.MachineName.ToLower();
 						queueName = queueName.Length > 50 ? queueName.Substring(0, 50) : queueName;
-					}					
+					}
 
 					var resp = await _admin.GetQueueRuntimePropertiesAsync(queueName);
 					return options.DealLetter ? resp?.Value?.DeadLetterMessageCount : resp?.Value?.TotalMessageCount;

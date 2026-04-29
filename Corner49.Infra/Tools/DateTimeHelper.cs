@@ -4,7 +4,7 @@
 		public static int DateToInt(this DateTime dt) {
 			return dt.Year * 10000 + dt.Month * 100 + dt.Day;
 		}
-		
+
 
 		public static DateTime DateFromInt(int dt) {
 			int year = dt / 10000;

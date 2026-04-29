@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace Corner49.Infra.Http {
 	public class OAuthClient {
@@ -21,7 +16,7 @@ namespace Corner49.Infra.Http {
 			_scope = scope;
 		}
 
-		
+
 
 		public async Task<OAuthResponse?> GetToken() {
 
@@ -47,7 +42,7 @@ namespace Corner49.Infra.Http {
 					response.EnsureSuccessStatusCode();
 
 					// Read the response as a string.
-					return  JsonSerializer.Deserialize<OAuthResponse>(result);
+					return JsonSerializer.Deserialize<OAuthResponse>(result);
 
 				} catch (HttpRequestException e) {
 					throw;

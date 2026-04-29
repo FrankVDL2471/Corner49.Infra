@@ -1,7 +1,7 @@
 ﻿namespace Corner49.Infra.Messages {
 	public abstract class MessageBase {
 
-		public MessageBase(string name, bool useQueue= false) {
+		public MessageBase(string name, bool useQueue = false) {
 			this.Name = name;
 			this.UseQueue = useQueue;
 		}

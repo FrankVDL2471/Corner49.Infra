@@ -1,11 +1,6 @@
-﻿using Azure.Storage.Files.Shares.Models;
+﻿using Azure;
 using Azure.Storage.Files.Shares;
-using Azure;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Azure.Storage.Files.Shares.Models;
 
 namespace Corner49.Infra.Storage {
 

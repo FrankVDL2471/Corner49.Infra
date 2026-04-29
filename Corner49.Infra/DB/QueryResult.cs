@@ -2,8 +2,8 @@
 	public class QueryResult<T> where T : class {
 
 
-		public QueryResult() { 
-			this.Data = new List<T>();	
+		public QueryResult() {
+			this.Data = new List<T>();
 		}
 
 		/// <summary>
@@ -11,9 +11,9 @@
 		/// </summary>
 		public int? TotalCount { get; set; }
 
-		public string? ContinuationToken { get; set; }	
+		public string? ContinuationToken { get; set; }
 
-		public IList<T> Data { get;init; }
+		public IList<T> Data { get; init; }
 
 	}
 }

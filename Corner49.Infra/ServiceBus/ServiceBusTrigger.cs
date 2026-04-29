@@ -116,7 +116,7 @@ namespace Corner49.Infra.ServiceBus {
 			} finally {
 				if (opp != null) opp.Dispose();
 			}
-			
+
 		}
 	}
 

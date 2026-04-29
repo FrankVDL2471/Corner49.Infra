@@ -555,7 +555,7 @@ namespace Corner49.Infra.DB {
 
 		public Task<QueryResult<T>> Query(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
-			return this.Query(pk, query, continuationToken, maxItemCount, cancelToken);	
+			return this.Query(pk, query, continuationToken, maxItemCount, cancelToken);
 		}
 		public Task<QueryResult<T>> Query(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();

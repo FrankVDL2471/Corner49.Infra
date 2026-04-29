@@ -3,9 +3,7 @@ using Hangfire;
 using Hangfire.SqlServer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 
 namespace Corner49.Infra.Jobs {
 	public class JobBuilder {
@@ -14,9 +12,9 @@ namespace Corner49.Infra.Jobs {
 		private readonly Hangfire.Azure.CosmosDbStorage? _storage;
 		private readonly JobConfig _config;
 
-		public JobBuilder(IServiceCollection services,  JobConfig config) {
+		public JobBuilder(IServiceCollection services, JobConfig config) {
 			_services = services;
-			_config = config;	
+			_config = config;
 
 
 			if (config.UseSqlServer) {
@@ -31,7 +29,7 @@ namespace Corner49.Infra.Jobs {
 					.UseIgnoredAssemblyVersionTypeResolver()
 					.UseSimpleAssemblyNameTypeSerializer();
 
-				services.AddHangfire(x => x.UseSqlServerStorage(bld.ToString())  );
+				services.AddHangfire(x => x.UseSqlServerStorage(bld.ToString()));
 			} else {
 				string? url = CosmosDBHelper.GetUrl(config.ConnectString);
 				string? authSecret = CosmosDBHelper.GetAuthSecret(config.ConnectString);
@@ -56,7 +54,7 @@ namespace Corner49.Infra.Jobs {
 
 			services.AddHangfireServer((cfg) => {
 				cfg.CancellationCheckInterval = TimeSpan.FromSeconds(5);
-				cfg.Queues = new[] { config.UseLocalQueue ? System.Environment.MachineName.ToLower() :  (config.QueueName ?? "default") };
+				cfg.Queues = new[] { config.UseLocalQueue ? System.Environment.MachineName.ToLower() : (config.QueueName ?? "default") };
 				if (config.WorkerCount != null) cfg.WorkerCount = config.WorkerCount.Value;
 			});
 			services.AddHostedService<JobManager>();
@@ -77,15 +75,15 @@ namespace Corner49.Infra.Jobs {
 			RecurringJobOptions opt = new RecurringJobOptions();
 			opt.TimeZone = TimeZoneInfo.Local;
 
-			string queue =  _config.UseLocalQueue ? System.Environment.MachineName.ToLower() :  _config.QueueName ?? "default";
-			RecurringJob.AddOrUpdate<T>(id, queue, (job) => job.Run(typeof(T).Name, null, default), bld.ToString(), opt );
+			string queue = _config.UseLocalQueue ? System.Environment.MachineName.ToLower() : _config.QueueName ?? "default";
+			RecurringJob.AddOrUpdate<T>(id, queue, (job) => job.Run(typeof(T).Name, null, default), bld.ToString(), opt);
 		}
 
 
 		public void UseDashboard(IApplicationBuilder app, string appName) {
 			if (!_config.EnableDashboard) return;
 			app.UseHangfireDashboard("/jobs", new DashboardOptions {
-				DashboardTitle = _config.DbName ??  $"{appName} Jobs",
+				DashboardTitle = _config.DbName ?? $"{appName} Jobs",
 				AppPath = "/index.html",
 				Authorization = new[] { new JobAuth() }
 			}, _storage);

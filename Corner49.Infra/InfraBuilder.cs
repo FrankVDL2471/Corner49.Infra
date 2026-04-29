@@ -1,14 +1,17 @@
 ﻿using Auth0.AspNetCore.Authentication;
+using Corner49.Infra.ApiKey;
+using Corner49.Infra.Auth;
 using Corner49.Infra.DB;
 using Corner49.Infra.Health;
+using Corner49.Infra.Helpers;
 using Corner49.Infra.Jobs;
 using Corner49.Infra.Logging;
 using Corner49.Infra.ServiceBus;
 using Corner49.Infra.Tools;
 using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Azure.SignalR.Management;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,12 +19,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Scalar.AspNetCore;
 using System.Diagnostics;
-using System.Text.Json.Serialization;
-using Corner49.Infra.Helpers;
-using Corner49.Infra.ApiKey;
 using System.Text.Json;
-using Microsoft.AspNetCore.OpenApi;
-using Corner49.Infra.Auth;
+using System.Text.Json.Serialization;
 
 namespace Corner49.Infra {
 
@@ -43,7 +42,7 @@ namespace Corner49.Infra {
 
 			//Internal services
 			_services.AddSingleton<IServiceBusService, ServiceBusService>();
-			
+
 
 			Configuration = builder.Configuration;
 			Instance = new InfraBuilderInstance { Name = appName };
@@ -55,7 +54,7 @@ namespace Corner49.Infra {
 
 			//Internal services
 			_services.AddSingleton<IServiceBusService, ServiceBusService>();
-			
+
 
 			Configuration = builder.Configuration;
 			Instance = new InfraBuilderInstance { Name = appName };
@@ -156,7 +155,7 @@ namespace Corner49.Infra {
 				}
 
 
-				
+
 			}
 
 			//_builder.Logging.add
@@ -300,7 +299,7 @@ namespace Corner49.Infra {
 					return Task.CompletedTask;
 				});
 				if (openApi != null) {
-					openApi.Invoke(options);	
+					openApi.Invoke(options);
 				} else {
 					options.BuildSchemas();
 					options.BuildOperations();
@@ -502,7 +501,7 @@ namespace Corner49.Infra {
 			} else {
 				this.Services.AddSession(options => {
 					options.IdleTimeout = TimeSpan.FromSeconds(30);
-					options.Cookie.Name = $"{_appName}.Session";	
+					options.Cookie.Name = $"{_appName}.Session";
 					options.Cookie.HttpOnly = false;
 					options.Cookie.IsEssential = true;
 				});
@@ -542,9 +541,9 @@ namespace Corner49.Infra {
 				if (_hasViewControllers) {
 					if (_showDeveloperError) {
 						app.UseDeveloperExceptionPage();
-					} else { 
+					} else {
 						app.UseExceptionHandler(_errorPage ?? "/Home/Error");
-					}					
+					}
 				}
 				// The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
 				app.UseHsts();
@@ -628,7 +627,7 @@ namespace Corner49.Infra {
 		public async Task Run(IHost host) {
 			if (_docDBBuilder != null) await _docDBBuilder.Init(host.Services);
 			InfraBuilder.Instance.Services = host.Services;
-			await host.RunAsync();	
+			await host.RunAsync();
 		}
 
 

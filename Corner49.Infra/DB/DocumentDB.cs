@@ -1,8 +1,6 @@
 ﻿using Corner49.Infra.Tools;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
-using System.Text.Json;
 
 namespace Corner49.Infra.DB {
 
@@ -19,7 +17,7 @@ namespace Corner49.Infra.DB {
 		private CosmosClient _client;
 		private readonly DocumentDBOptions _options;
 
-		public DocumentDB(IOptions<DocumentDBOptions> options)  {
+		public DocumentDB(IOptions<DocumentDBOptions> options) {
 			_options = options.Value;
 			this.Connect();
 		}
@@ -27,15 +25,15 @@ namespace Corner49.Infra.DB {
 			_options = new DocumentDBOptions();
 			_options.ConnectString = connectString;
 			_options.DatabaseName = dbName;
-			_options.DirectMode = directMode;	
+			_options.DirectMode = directMode;
 
 			this.Connect();
 		}
-	
 
-			
 
-		private void  Connect() {
+
+
+		private void Connect() {
 			CosmosClientOptions options = new CosmosClientOptions();
 			options.UseSystemTextJsonSerializerWithOptions = JsonHelper.Options;
 			options.ConnectionMode = _options.DirectMode ? ConnectionMode.Direct : ConnectionMode.Gateway;
@@ -50,7 +48,7 @@ namespace Corner49.Infra.DB {
 
 
 		public DocumentRepo<T> GetRepo<T>(string dbName, string tblName, params string[] paritionKey) where T : class {
-			return new DocumentRepo<T>(_client, dbName, tblName,  paritionKey);
+			return new DocumentRepo<T>(_client, dbName, tblName, paritionKey);
 		}
 
 

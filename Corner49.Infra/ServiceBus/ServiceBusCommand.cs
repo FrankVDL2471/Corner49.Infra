@@ -58,8 +58,8 @@ namespace Corner49.Infra.ServiceBus {
 				if (Data == null) return null;
 				if (Data.IsEmpty) return null;
 				return Data.ToObjectFromJson<T>(JsonOptions);
-			} catch { 
-				return null; 
+			} catch {
+				return null;
 			}
 		}
 

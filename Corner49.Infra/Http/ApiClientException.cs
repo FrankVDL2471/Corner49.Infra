@@ -12,8 +12,8 @@ namespace Corner49.Infra.Http {
 			this.StatusCode = code;
 		}
 
-		
-		public HttpStatusCode? StatusCode { get; private set;  }
+
+		public HttpStatusCode? StatusCode { get; private set; }
 
 
 

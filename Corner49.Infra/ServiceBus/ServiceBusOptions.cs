@@ -71,7 +71,7 @@ namespace Corner49.Infra.ServiceBus {
 		public ServiceBusOptions(string subscriptionName) {
 			this.SubscriptionName = subscriptionName;
 			this.Kind = ServiceBusKind.Queue;
-			this.MaxConcurrentCalls = 30;		
+			this.MaxConcurrentCalls = 30;
 			this.SubscriptionFilter = null;
 			this.DealLetter = false;
 		}
@@ -87,9 +87,9 @@ namespace Corner49.Infra.ServiceBus {
 
 		public string SubscriptionName { get; set; }
 		public string? SubscriptionFilter { get; set; }
-				
+
 		public TimeSpan? DuplicateDetectionWindow { get; set; }
-		
+
 		public int PrefetchCount { get; set; }
 
 		public bool TrackMessageCount { get; set; }

@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Corner49.Infra.DB {
 	public static class DocumentDBExtensions {
 
-		public static DocumentDBBuilder AddDocumentDB(this IServiceCollection services, IConfiguration config,   Action<DocumentDBBuilder>? repos = null) {
+		public static DocumentDBBuilder AddDocumentDB(this IServiceCollection services, IConfiguration config, Action<DocumentDBBuilder>? repos = null) {
 
 			services.AddSingleton<IDocumentDB, DocumentDB>();
 

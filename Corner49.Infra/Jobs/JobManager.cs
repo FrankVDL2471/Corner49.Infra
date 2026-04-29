@@ -3,7 +3,6 @@ using Hangfire.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
 namespace Corner49.Infra.Jobs {
@@ -24,7 +23,7 @@ namespace Corner49.Infra.Jobs {
 		private readonly IBackgroundJobClient _jobClient;
 		private readonly IJobConfig _config;
 
-		public JobManager(ILogger<JobManager> logger, IServiceProvider serviceProvider, IBackgroundJobClient jobClient, IJobConfig config	) {
+		public JobManager(ILogger<JobManager> logger, IServiceProvider serviceProvider, IBackgroundJobClient jobClient, IJobConfig config) {
 			_logger = logger;
 			_serviceProvider = serviceProvider;
 			_jobClient = jobClient;
@@ -55,8 +54,8 @@ namespace Corner49.Infra.Jobs {
 			return Task.CompletedTask;
 		}
 
-		public string StartJob<T>(Dictionary<string, string>? args = null,string? queue = null) where T : IJobRunner {
-			var nm = _config.UseLocalQueue ? System.Environment.MachineName.ToLower() :  queue ?? _config.QueueName ?? "default";
+		public string StartJob<T>(Dictionary<string, string>? args = null, string? queue = null) where T : IJobRunner {
+			var nm = _config.UseLocalQueue ? System.Environment.MachineName.ToLower() : queue ?? _config.QueueName ?? "default";
 			try {
 
 				var job = ActivatorUtilities.CreateInstance<T>(_serviceProvider) as IJobRunner;

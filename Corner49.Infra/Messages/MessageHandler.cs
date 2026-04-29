@@ -16,7 +16,7 @@ namespace Corner49.Infra.Messages {
 			if (method != null) {
 				var task = method.Invoke(this, new object[] { msg }) as Task;
 				if (task != null) {
-					await task.ConfigureAwait(false);	
+					await task.ConfigureAwait(false);
 				}
 			}
 		}

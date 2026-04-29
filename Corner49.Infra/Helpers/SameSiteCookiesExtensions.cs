@@ -1,17 +1,11 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Corner49.Infra.Helpers {
 	public static class SameSiteServiceCollectionExtensions {
 		public static IServiceCollection ConfigureSameSiteNoneCookies(this IServiceCollection services) {
-			services.Configure<CookiePolicyOptions>(options =>
-			{
+			services.Configure<CookiePolicyOptions>(options => {
 				options.MinimumSameSitePolicy = SameSiteMode.Unspecified;
 				options.OnAppendCookie = cookieContext => CheckSameSite(cookieContext.CookieOptions);
 				options.OnDeleteCookie = cookieContext => CheckSameSite(cookieContext.CookieOptions);

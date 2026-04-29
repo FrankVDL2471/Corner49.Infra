@@ -1,8 +1,8 @@
-﻿using Microsoft.OpenApi.Models;
-using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi.Models;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
-using Microsoft.AspNetCore.OpenApi;
 
 namespace Corner49.Infra.Helpers {
 	public static class OpenApiHelpers {

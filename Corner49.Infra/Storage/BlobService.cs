@@ -2,7 +2,6 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.Amqp.Framing;
 using Microsoft.Extensions.Configuration;
 using System.Text;
 
@@ -136,7 +135,7 @@ namespace Corner49.Infra.Storage {
 			var client = container.GetBlobClient(name);
 			if (!await client.ExistsAsync()) return null;
 			return await client.OpenReadAsync();
-			
+
 		}
 
 		public async Task<bool> SetMeta(string containerName, string name, string? contentType = null, Dictionary<string, string>? metaData = null) {
@@ -164,13 +163,13 @@ namespace Corner49.Infra.Storage {
 			if (container == null) return null;
 
 			var client = container.GetBlobClient(name);
-			
-			if (! await client.ExistsAsync()) {
+
+			if (!await client.ExistsAsync()) {
 				await client.UploadAsync(new BinaryData(new byte[0]));
 				client = container.GetBlobClient(name);
 			}
 
-			
+
 			if (!string.IsNullOrEmpty(contentType)) {
 				var headers = new Azure.Storage.Blobs.Models.BlobHttpHeaders();
 				headers.ContentType = contentType;
@@ -201,7 +200,7 @@ namespace Corner49.Infra.Storage {
 			await client.SetHttpHeadersAsync(headers);
 
 			if (metaData != null) {
-				await client.SetMetadataAsync(metaData); 
+				await client.SetMetadataAsync(metaData);
 			}
 
 
@@ -211,7 +210,7 @@ namespace Corner49.Infra.Storage {
 
 		public async Task<string?> Upload(string containerName, string name, Stream data, string? contentType = null, Dictionary<string, string>? metaData = null) {
 			var container = await GetContainer(containerName, true);
-			if (container == null) return null;	
+			if (container == null) return null;
 
 			var client = container.GetBlobClient(name);
 			await client.DeleteIfExistsAsync();
@@ -345,16 +344,16 @@ namespace Corner49.Infra.Storage {
 
 				BlobInfo info = new BlobInfo();
 				info.ETag = response.Headers.ETag.ToString();
-				info.ContentType = response.Headers.ContentType;		
+				info.ContentType = response.Headers.ContentType;
 				info.ContentLength = response.Headers.ContentLengthLong ?? response.Headers.ContentLength;
 
 				if (response.Headers.TryGetValue("Last-Modified", out string? mod)) {
 					if (DateTimeOffset.TryParse(mod, out DateTimeOffset dt)) {
 						info.Date = dt;
-					}					
+					}
 				}
 
-				
+
 
 				return info;
 			}
@@ -389,7 +388,7 @@ namespace Corner49.Infra.Storage {
 		}
 
 		public async Task<Stream?> DownloadFile(string containerName, string name, CancellationToken cancellationToken = default) {
-			var container = await GetContainer(containerName,false);
+			var container = await GetContainer(containerName, false);
 			if (container == null) return null;
 			var client = container.GetBlobClient(name);
 
@@ -409,7 +408,7 @@ namespace Corner49.Infra.Storage {
 			var sourceClient = source.GetBlobClient(sourceName);
 
 			if (!await sourceClient.ExistsAsync()) return null;
-			
+
 
 			var target = await GetContainer(targetContainer, true);
 			var targetClient = target.GetBlobClient(targetName);
@@ -419,7 +418,7 @@ namespace Corner49.Infra.Storage {
 				await sourceClient.DownloadToAsync(stream);
 				await stream.FlushAsync();
 			}
-			
+
 
 			await sourceClient.DeleteIfExistsAsync();
 
@@ -447,7 +446,7 @@ namespace Corner49.Infra.Storage {
 
 			var items = container.GetBlobsByHierarchyAsync(options);
 
-			await foreach(var item in items) {
+			await foreach (var item in items) {
 				if (item.IsBlob) {
 					if (item.Blob.Deleted) continue;
 					yield return item.Blob.Name;

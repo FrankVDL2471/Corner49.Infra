@@ -8,7 +8,7 @@ namespace Corner49.Infra.Jobs {
 		public static string Queue => System.Environment.MachineName.ToLower();
 
 		public JobQueueAttribute() {
-			Order = int.MaxValue;			
+			Order = int.MaxValue;
 		}
 
 		public void OnStateElection(ElectStateContext context) {
