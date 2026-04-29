@@ -1,9 +1,7 @@
-﻿using Auth0.AspNetCore.Authentication;
-using Corner49.DB.Tools;
+﻿using Corner49.DB.Tools;
 using Corner49.Infra.Tools;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
-using System.Collections.Concurrent;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -13,6 +11,10 @@ namespace Corner49.Infra.DB {
 
 
 	public interface IDocumentRepo<T> where T : class {
+
+
+		Action<DocumentDiagnostics>? OnDiagnostics { get; set; }
+
 		Task<T?> GetItem(string paritionId, string itemId);
 
 		IAsyncEnumerable<T> GetItems(string? paritionId);
@@ -94,6 +96,8 @@ namespace Corner49.Infra.DB {
 		Task IDocumentRepoInitializer.Init() {
 			return this.Init(null, null);
 		}
+
+		public Action<DocumentDiagnostics>? OnDiagnostics { get; set; }
 
 		public async Task Init(int? databaseThroughput = null, int? containerThroughput = null) {
 			for (int retry = 0; retry <= 5; retry++) {
@@ -201,6 +205,21 @@ namespace Corner49.Infra.DB {
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.ReadItemAsync<T>(itemId, pk);
+					if (this.OnDiagnostics != null) {
+						this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(GetItem),
+							Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", pk.ToString() },
+									{ "itemId", itemId }
+								},
+							StatusCode = resp.StatusCode,
+							StartTime = resp.Diagnostics.GetStartTimeUtc(),
+							ElapsedTime = resp.Diagnostics.GetClientElapsedTime(),
+							TotalRequestCharge = resp.Diagnostics.GetQueryMetrics().TotalRequestCharge
+						});
+					}
+
 					if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
 					return resp.Resource;
 				} catch (CosmosException err) {
@@ -229,7 +248,7 @@ namespace Corner49.Infra.DB {
 			return this.GetQueryResults(this.CreateQuery(paritionId));
 		}
 
-		public Task<T> AddItem(string paritionId, T item) { 
+		public Task<T> AddItem(string paritionId, T item) {
 			return this.AddItem(new PartitionKey(paritionId), item);
 		}
 		public Task<T> AddItem(string[] partitionId, T item) {
@@ -247,6 +266,21 @@ namespace Corner49.Infra.DB {
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.CreateItemAsync(item, pk);
+					if (this.OnDiagnostics != null) {
+						this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(AddItem),
+							Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", pk.ToString() },
+									{ "item", item }
+								},
+							StatusCode = resp.StatusCode,
+							StartTime = resp.Diagnostics.GetStartTimeUtc(),
+							ElapsedTime = resp.Diagnostics.GetClientElapsedTime(),
+							TotalRequestCharge = resp.Diagnostics.GetQueryMetrics().TotalRequestCharge
+						});
+					}
+
 					return resp.Resource;
 
 				} catch (CosmosException err) {
@@ -283,6 +317,21 @@ namespace Corner49.Infra.DB {
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.UpsertItemAsync(item, pk);
+					if (this.OnDiagnostics != null) {
+						this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(UpsertItem),
+							Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", pk.ToString() },
+									{ "item", item }
+								},
+							StatusCode = resp.StatusCode,
+							StartTime = resp.Diagnostics.GetStartTimeUtc(),
+							ElapsedTime = resp.Diagnostics.GetClientElapsedTime(),
+							TotalRequestCharge = resp.Diagnostics.GetQueryMetrics().TotalRequestCharge
+						});
+					}
+
 					if (status != null) status.Invoke(resp.StatusCode);
 					return resp.Resource;
 
@@ -318,7 +367,25 @@ namespace Corner49.Infra.DB {
 			Exception? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
-					return await this.Container.PatchItemAsync<T>(itemId, pk, patches);
+					var resp = await this.Container.PatchItemAsync<T>(itemId, pk, patches);
+					if (this.OnDiagnostics != null) {
+						this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(PatchItem),
+							Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", pk.ToString() },
+									{ "itemId", itemId },
+									{ "patches", patches },
+								},
+							StatusCode = resp.StatusCode,
+							StartTime = resp.Diagnostics.GetStartTimeUtc(),
+							ElapsedTime = resp.Diagnostics.GetClientElapsedTime(),
+							TotalRequestCharge = resp.Diagnostics.GetQueryMetrics().TotalRequestCharge
+						});
+					}
+
+
+					return resp.Resource;
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
@@ -355,6 +422,20 @@ namespace Corner49.Infra.DB {
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.DeleteItemAsync<T>(itemId, pk);
+					if (this.OnDiagnostics != null) {
+						this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(DeleteItem),
+							Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", pk.ToString() },
+									{ "itemId", itemId }
+								},
+							StatusCode = resp.StatusCode,
+							StartTime = resp.Diagnostics.GetStartTimeUtc(),
+							ElapsedTime = resp.Diagnostics.GetClientElapsedTime(),
+							TotalRequestCharge = resp.Diagnostics.GetQueryMetrics().TotalRequestCharge
+						});
+					}
 					if (resp.StatusCode == System.Net.HttpStatusCode.NoContent) return true;
 					if (resp.StatusCode == System.Net.HttpStatusCode.OK) return true;
 					if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
@@ -382,7 +463,7 @@ namespace Corner49.Infra.DB {
 
 
 
-		public IQueryable<T> CreateQuery(string? partitionKey = null, int? maxItemCount = null) { 
+		public IQueryable<T> CreateQuery(string? partitionKey = null, int? maxItemCount = null) {
 			return CreateQuery(new PartitionKey(partitionKey), maxItemCount);
 		}
 		public IQueryable<T> CreateQuery(string[] partitionKey, int? maxItemCount = null) {
@@ -422,6 +503,23 @@ namespace Corner49.Infra.DB {
 			using (FeedIterator<T> FeedIterator = qry.ToFeedIterator()) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
 					var feed = await FeedIterator.ReadNextAsync(cancelToken);
+
+					if (this.OnDiagnostics != null) {
+						this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(Read),
+							Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", partitionKey  },
+									{ "filter", filter }
+								},
+							StatusCode = feed.StatusCode,
+							StartTime = feed.Diagnostics.GetStartTimeUtc(),
+							ElapsedTime = feed.Diagnostics.GetClientElapsedTime(),
+							TotalRequestCharge = feed.Diagnostics.GetQueryMetrics().TotalRequestCharge
+						});
+					}
+
+
 					foreach (var item in feed) {
 						await onRead(item);
 					}
@@ -492,8 +590,8 @@ namespace Corner49.Infra.DB {
 				foreach (var kv in parameters) {
 					def.WithParameter(kv.Key, kv.Value);
 				}
-			}	
-			
+			}
+
 
 			QueryResult<T> result = new QueryResult<T>();
 			if (token == null) {
@@ -509,6 +607,23 @@ namespace Corner49.Infra.DB {
 			using (FeedIterator<T> FeedIterator = this.Container.GetItemQueryIterator<T>(def, token, queryOptions)) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
 					var feed = await FeedIterator.ReadNextAsync(cancelToken);
+
+					if (this.OnDiagnostics != null) {
+						this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(Query),
+							Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", pk?.ToString()  },
+									{ "sql", sql },
+									{ "parameters", parameters }
+								},
+							StatusCode = feed.StatusCode,
+							StartTime = feed.Diagnostics.GetStartTimeUtc(),
+							ElapsedTime = feed.Diagnostics.GetClientElapsedTime(),
+							TotalRequestCharge = feed.Diagnostics.GetQueryMetrics().TotalRequestCharge
+						});
+					}
+
 					foreach (var item in feed) {
 						result.Data.Add(item);
 					}
@@ -524,7 +639,7 @@ namespace Corner49.Infra.DB {
 
 		public Task Read(string? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
-			return  this.Read(pk, query, onRead, maxItemCount, cancelToken);
+			return this.Read(pk, query, onRead, maxItemCount, cancelToken);
 		}
 		public Task Read(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
@@ -614,14 +729,51 @@ namespace Corner49.Infra.DB {
 
 			using (FeedIterator<M> feedIterator = this.Container.GetItemQueryIterator<M>(def, null, options)) {
 				while (feedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					FeedResponse<M> response = await feedIterator.ReadNextAsync(cancelToken);
+					FeedResponse<M> feed = await feedIterator.ReadNextAsync(cancelToken);
 
-					while (response.StatusCode == HttpStatusCode.TooManyRequests) {
-						await Task.Delay(TimeSpan.FromSeconds(5));
-						response = await feedIterator.ReadNextAsync(cancelToken);
+					if (this.OnDiagnostics != null) {
+						this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(ExecSQL),
+							Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", partitionKey?.ToString()  },
+									{ "sql", sql },
+									{  "maxItemCount", maxItemCount  },
+									{ "parameters", parameters }
+								},
+							StatusCode = feed.StatusCode,
+							StartTime = feed.Diagnostics.GetStartTimeUtc(),
+							ElapsedTime = feed.Diagnostics.GetClientElapsedTime(),
+							TotalRequestCharge = feed.Diagnostics.GetQueryMetrics().TotalRequestCharge
+						});
 					}
 
-					foreach (var item in response) {
+
+
+					while (feed.StatusCode == HttpStatusCode.TooManyRequests) {
+						await Task.Delay(TimeSpan.FromSeconds(5));
+						feed = await feedIterator.ReadNextAsync(cancelToken);
+
+						if (this.OnDiagnostics != null) {
+							this.OnDiagnostics(new DocumentDiagnostics {
+								Repo = this.GetType().Name,
+								Method = nameof(ExecSQL),
+								Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", partitionKey?.ToString()  },
+									{ "sql", sql },
+									{  "maxItemCount", maxItemCount  },
+									{ "parameters", parameters }
+								},
+								StatusCode = feed.StatusCode,
+								StartTime = feed.Diagnostics.GetStartTimeUtc(),
+								ElapsedTime = feed.Diagnostics.GetClientElapsedTime(),
+								TotalRequestCharge = feed.Diagnostics.GetQueryMetrics().TotalRequestCharge
+							});
+						}
+
+					}
+
+					foreach (var item in feed) {
 						yield return item;
 					}
 				}
@@ -640,7 +792,7 @@ namespace Corner49.Infra.DB {
 			return this.ReadSQL(bld.Build(), sql, onRead, continuationToken, maxItemCount, parameters, cancelToken);
 		}
 
-		private async Task<string?> ReadSQL(PartitionKey? partitionKey, string sql, Func<T, Task<bool>> onRead,  string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
+		private async Task<string?> ReadSQL(PartitionKey? partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
 			QueryDefinition def = new QueryDefinition(sql);
 			if (parameters != null) {
 				foreach (var kv in parameters) {
@@ -659,6 +811,27 @@ namespace Corner49.Infra.DB {
 			using (FeedIterator<T> FeedIterator = this.Container.GetItemQueryIterator<T>(def, token, options)) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested && run) {
 					var feed = await FeedIterator.ReadNextAsync(cancelToken);
+
+					if (this.OnDiagnostics != null) {
+						this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(ReadSQL),
+							Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", partitionKey?.ToString()  },
+									{ "sql", sql },
+									{ "continuationToken", continuationToken },
+									{  "maxItemCount", maxItemCount  },
+									{ "parameters", parameters }
+								},
+							StatusCode = feed.StatusCode,
+							StartTime = feed.Diagnostics.GetStartTimeUtc(),
+							ElapsedTime = feed.Diagnostics.GetClientElapsedTime(),
+							TotalRequestCharge = feed.Diagnostics.GetQueryMetrics().TotalRequestCharge
+						});
+					}
+
+
+
 					foreach (var item in feed) {
 						cnt++;
 						run = await onRead(item);
@@ -682,6 +855,23 @@ namespace Corner49.Infra.DB {
 				using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(sql)) {
 					while (feed.HasMoreResults) {
 						FeedResponse<object> response = await feed.ReadNextAsync(cancelToken);
+
+						if (this.OnDiagnostics != null) {
+							this.OnDiagnostics(new DocumentDiagnostics {
+								Repo = this.GetType().Name,
+								Method = nameof(CountSQL),
+								Parameters = new Dictionary<string, object?>() {
+									{ "where", where }
+								},
+								StatusCode = response.StatusCode,
+								StartTime = response.Diagnostics.GetStartTimeUtc(),
+								ElapsedTime = response.Diagnostics.GetClientElapsedTime(),
+								TotalRequestCharge = response.Diagnostics.GetQueryMetrics().TotalRequestCharge
+							});
+						}
+
+
+
 						foreach (var resp in response) {
 							var jobj = (System.Text.Json.JsonElement)resp;
 							return jobj.GetProperty("$1").GetInt32();
@@ -699,7 +889,7 @@ namespace Corner49.Infra.DB {
 			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
 			return RawSQL(pk, sql, parameters, cancelToken);
 		}
-		public IAsyncEnumerable<JsonElement> RawSQL(string[] ? partitionKey, string sql, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
+		public IAsyncEnumerable<JsonElement> RawSQL(string[]? partitionKey, string sql, Dictionary<string, object>? parameters = null, [EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionKey) {
 				bld.Add(pk);
@@ -722,6 +912,25 @@ namespace Corner49.Infra.DB {
 			using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(def, null, options)) {
 				while (feed.HasMoreResults) {
 					FeedResponse<object> response = await feed.ReadNextAsync(cancelToken);
+
+
+					if (this.OnDiagnostics != null) {
+						this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(RawSQL),
+							Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", pk?.ToString()  },
+									{ "sql", sql },
+									{ "parameters", parameters }
+								},
+							StatusCode = response.StatusCode,
+							StartTime = response.Diagnostics.GetStartTimeUtc(),
+							ElapsedTime = response.Diagnostics.GetClientElapsedTime(),
+							TotalRequestCharge = response.Diagnostics.GetQueryMetrics().TotalRequestCharge
+						});
+					}
+
+
 					foreach (var resp in response) {
 						if (resp is JsonElement el) {
 							yield return el;
