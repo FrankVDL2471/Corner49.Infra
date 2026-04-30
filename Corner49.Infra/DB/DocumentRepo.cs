@@ -170,7 +170,7 @@ namespace Corner49.Infra.DB {
 		/// <param name="paritionKey">The hierarchical partition key values.</param>
 		/// <param name="maxItemCount">Maximum items per page.</param>
 		/// <returns>IQueryable for building LINQ queries.</returns>
-		IQueryable<T> CreateQuery(string[] paritionKey, int? maxItemCount = null);
+		IQueryable<T> CreateQuery(string[]? paritionKey, int? maxItemCount = null);
 
 		/// <summary>
 		/// Executes a query and streams results through a callback function.
@@ -194,7 +194,7 @@ namespace Corner49.Infra.DB {
 		/// <param name="onRead">Callback invoked for each document.</param>
 		/// <param name="maxItemCount">Maximum items per page.</param>
 		/// <param name="cancelToken">Cancellation token.</param>
-		Task Read(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default);
+		Task Read(string[]? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default);
 
 		/// <summary>
 		/// Executes a queryable and returns results as an async enumerable.
@@ -240,7 +240,7 @@ namespace Corner49.Infra.DB {
 		/// <param name="maxItemCount">Maximum items to return.</param>
 		/// <param name="cancelToken">Cancellation token.</param>
 		/// <returns>Query result with data and continuation token.</returns>
-		Task<QueryResult<T>> Query(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
+		Task<QueryResult<T>> Query(string[]? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default);
 
 		/// <summary>
 		/// Executes a SQL query with pagination support.
@@ -268,7 +268,7 @@ namespace Corner49.Infra.DB {
 		/// <param name="parameters">Query parameters.</param>
 		/// <param name="cancelToken">Cancellation token.</param>
 		/// <returns>Query result with data and continuation token.</returns>
-		Task<QueryResult<T>> Query(string[] partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+		Task<QueryResult<T>> Query(string[]? partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 
 		/// <summary>
 		/// Executes a SQL query and returns results as an async enumerable with custom projection.
@@ -296,7 +296,7 @@ namespace Corner49.Infra.DB {
 		/// <param name="parameters">Query parameters.</param>
 		/// <param name="cancelToken">Cancellation token.</param>
 		/// <returns>Async enumerable stream of results.</returns>
-		IAsyncEnumerable<M> ExecSQL<M>(string[] partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+		IAsyncEnumerable<M> ExecSQL<M>(string[]? partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 
 		/// <summary>
 		/// Executes a SQL query and streams results through a callback function.
@@ -326,7 +326,7 @@ namespace Corner49.Infra.DB {
 		/// <param name="parameters">Query parameters.</param>
 		/// <param name="cancelToken">Cancellation token.</param>
 		/// <returns>Continuation token for next page.</returns>
-		Task<string?> ReadSQL(string[] partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+		Task<string?> ReadSQL(string[]? partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 
 		/// <summary>
 		/// Counts documents matching a WHERE clause condition.
@@ -401,6 +401,12 @@ namespace Corner49.Infra.DB {
 		/// </summary>
 		/// <returns>Async task.</returns>
 		Task Init();
+
+		/// <summary>
+		/// Checks if the database and container exist without creating them.
+		/// </summary>
+		/// <returns></returns>
+		Task<bool> Exists();
 	}
 
 	/// <summary>
@@ -455,6 +461,24 @@ namespace Corner49.Infra.DB {
 		Task IDocumentRepoInitializer.Init() {
 			return this.Init(null, null);
 		}
+
+		private bool? _exists = null;
+		async Task<bool> IDocumentRepoInitializer.Exists() {
+			if (_exists != null) return _exists.Value;
+
+			try {
+				var container = this.Container;
+				var resp = await container.ReadContainerAsync();
+				_exists = true;
+			} catch {
+				_exists = false;
+			}
+
+			return _exists.Value;
+		}
+
+
+
 
 		/// <inheritdoc />
 		public Action<DocumentDiagnostics>? OnDiagnostics { get; set; }
@@ -842,12 +866,8 @@ namespace Corner49.Infra.DB {
 			return CreateQuery(new PartitionKey(partitionKey), maxItemCount);
 		}
 		/// <inheritdoc />
-		public IQueryable<T> CreateQuery(string[] partitionKey, int? maxItemCount = null) {
-			PartitionKeyBuilder bld = new PartitionKeyBuilder();
-			foreach (var pk in partitionKey) {
-				bld.Add(pk);
-			}
-			return CreateQuery(bld.Build(), maxItemCount);
+		public IQueryable<T> CreateQuery(string[]? partitionKey, int? maxItemCount = null) {
+			return CreateQuery(GetPartitionKey(partitionKey), maxItemCount);
 		}
 
 
@@ -917,13 +937,8 @@ namespace Corner49.Infra.DB {
 			return this.Query(pk, query, continuationToken, maxItemCount, cancelToken);
 		}
 		/// <inheritdoc />
-		public Task<QueryResult<T>> Query(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {
-			PartitionKeyBuilder bld = new PartitionKeyBuilder();
-			foreach (var pk in partitionKey) {
-				bld.Add(pk);
-			}
-
-			return Query(bld.Build(), query, continuationToken, maxItemCount, cancelToken);
+		public Task<QueryResult<T>> Query(string[]? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, string? continuationToken = null, int? maxItemCount = null, CancellationToken cancelToken = default) {			
+			return Query(GetPartitionKey(partitionKey), query, continuationToken, maxItemCount, cancelToken);
 		}
 
 
@@ -963,12 +978,9 @@ namespace Corner49.Infra.DB {
 			return this.Query(partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null, sql, continuationToken, maxItemCount, parameters, cancelToken);
 		}
 		/// <inheritdoc />
-		public Task<QueryResult<T>> Query(string[] partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
-			PartitionKeyBuilder bld = new PartitionKeyBuilder();
-			foreach (var pk in partitionKey) {
-				bld.Add(pk);
-			}
-			return this.Query(bld.Build(), sql, continuationToken, maxItemCount, parameters, cancelToken);
+		public Task<QueryResult<T>> Query(string[]? partitionKey, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
+			var pk = GetPartitionKey(partitionKey);
+			return this.Query(pk, sql, continuationToken, maxItemCount, parameters, cancelToken);
 		}
 
 		private async Task<QueryResult<T>> Query(PartitionKey? pk, string sql, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
@@ -1037,12 +1049,9 @@ namespace Corner49.Infra.DB {
 			return this.Read(pk, query, onRead, maxItemCount, cancelToken);
 		}
 		/// <inheritdoc />
-		public Task Read(string[] partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
-			PartitionKeyBuilder bld = new PartitionKeyBuilder();
-			foreach (var pk in partitionKey) {
-				bld.Add(pk);
-			}
-			return this.Read(bld.Build(), query, onRead, maxItemCount, cancelToken);
+		public Task Read(string[]? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
+			var pk = GetPartitionKey(partitionKey);
+			return this.Read(pk, query, onRead, maxItemCount, cancelToken);
 		}
 
 		private async Task Read(PartitionKey? partitionKey, Func<IQueryable<T>, IQueryable<T>> query, Func<T, int?, Task<bool>> onRead, int? maxItemCount = null, CancellationToken cancelToken = default) {
@@ -1097,12 +1106,9 @@ namespace Corner49.Infra.DB {
 			return this.ExecSQL<M>(pk, sql, maxItemCount, parameters, cancelToken);
 		}
 		/// <inheritdoc />
-		public IAsyncEnumerable<M> ExecSQL<M>(string[] partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
-			PartitionKeyBuilder bld = new PartitionKeyBuilder();
-			foreach (var pk in partitionKey) {
-				bld.Add(pk);
-			}
-			return this.ExecSQL<M>(bld.Build(), sql, maxItemCount, parameters, cancelToken);
+		public IAsyncEnumerable<M> ExecSQL<M>(string[]? partitionKey, string sql, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
+			var pk = GetPartitionKey(partitionKey);
+			return this.ExecSQL<M>(pk, sql, maxItemCount, parameters, cancelToken);
 
 		}
 
@@ -1179,12 +1185,9 @@ namespace Corner49.Infra.DB {
 			return this.ReadSQL(pk, sql, onRead, continuationToken, maxItemCount, parameters, cancelToken);
 		}
 		/// <inheritdoc />
-		public Task<string?> ReadSQL(string[] partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
-			PartitionKeyBuilder bld = new PartitionKeyBuilder();
-			foreach (var pk in partitionKey) {
-				bld.Add(pk);
-			}
-			return this.ReadSQL(bld.Build(), sql, onRead, continuationToken, maxItemCount, parameters, cancelToken);
+		public Task<string?> ReadSQL(string[]? partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
+			var pk = GetPartitionKey(partitionKey);
+			return this.ReadSQL(pk, sql, onRead, continuationToken, maxItemCount, parameters, cancelToken);
 		}
 
 		private async Task<string?> ReadSQL(PartitionKey? partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default) {
@@ -1288,11 +1291,8 @@ namespace Corner49.Infra.DB {
 		/// Executes raw SQL with hierarchical partition key.
 		/// </summary>
 		public IAsyncEnumerable<JsonElement> RawSQL(string[]? partitionKey, string sql, Dictionary<string, object>? parameters = null, System.Threading.CancellationToken cancelToken = default) {
-			PartitionKeyBuilder bld = new PartitionKeyBuilder();
-			foreach (var pk in partitionKey) {
-				bld.Add(pk);
-			}
-			return RawSQL(bld.Build(), sql, parameters, cancelToken);
+			var pk = GetPartitionKey(partitionKey);
+			return RawSQL(pk, sql, parameters, cancelToken);
 		}
 
 
@@ -1426,7 +1426,23 @@ namespace Corner49.Infra.DB {
 			await Task.WhenAll(tasks);
 		}
 
+
+
+		private static PartitionKey? GetPartitionKey(string[]? partionId) {
+			if (partionId == null) return null;	
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partionId) {
+				bld.Add(pk);
+			}
+			return bld.Build();
+		}
+
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
+
+
+
+
+
 	}
 
 
