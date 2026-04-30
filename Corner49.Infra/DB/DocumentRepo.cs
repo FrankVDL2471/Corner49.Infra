@@ -1314,24 +1314,28 @@ namespace Corner49.Infra.DB {
 					FeedResponse<object> response = await feed.ReadNextAsync(cancelToken);
 
 
-					if (this.OnDiagnostics != null) {
-						this.OnDiagnostics(new DocumentDiagnostics {
-							Repo = this.GetType().Name,
-							Method = nameof(RawSQL),
-							Parameters = new Dictionary<string, object?>() {
+					try {
+						if (this.OnDiagnostics != null) {
+							this.OnDiagnostics(new DocumentDiagnostics {
+								Repo = this.GetType().Name,
+								Method = nameof(RawSQL),
+								Parameters = new Dictionary<string, object?>() {
 									{ "partitionKey", pk  },
 									{ "sql", sql },
 									{ "parameters", parameters }
 								},
-							StatusCode = response.StatusCode,
-							StartTime = response.Diagnostics.GetStartTimeUtc(),
-							ElapsedTime = response.Diagnostics.GetClientElapsedTime(),
-							TotalRequestCharge = response.Diagnostics.GetQueryMetrics().TotalRequestCharge
-						});
+								StatusCode = response.StatusCode,
+								StartTime = response.Diagnostics.GetStartTimeUtc(),
+								ElapsedTime = response.Diagnostics.GetClientElapsedTime(),
+								TotalRequestCharge = response.Diagnostics.GetQueryMetrics().TotalRequestCharge
+							});
+						}
+					} catch {
 					}
 
 
 					foreach (var resp in response) {
+						if (resp == null) continue;
 						if (resp is JsonElement el) {
 							yield return el;
 						}
