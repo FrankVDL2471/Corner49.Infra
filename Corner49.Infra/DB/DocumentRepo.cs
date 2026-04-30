@@ -30,6 +30,13 @@ namespace Corner49.Infra.DB {
 		/// </summary>
 		Action<DocumentDiagnostics>? OnDiagnostics { get; set; }
 
+
+		/// <summary>
+		/// Checks if the container exists in the database.
+		/// </summary>
+		/// <returns></returns>
+		Task<bool> Exists();
+
 		/// <summary>
 		/// Retrieves a single document by its partition key and item ID.
 		/// </summary>
@@ -402,11 +409,6 @@ namespace Corner49.Infra.DB {
 		/// <returns>Async task.</returns>
 		Task Init();
 
-		/// <summary>
-		/// Checks if the database and container exist without creating them.
-		/// </summary>
-		/// <returns></returns>
-		Task<bool> Exists();
 	}
 
 	/// <summary>
@@ -463,7 +465,7 @@ namespace Corner49.Infra.DB {
 		}
 
 		private bool? _exists = null;
-		async Task<bool> IDocumentRepoInitializer.Exists() {
+		public async Task<bool> Exists() {
 			if (_exists != null) return _exists.Value;
 
 			try {
