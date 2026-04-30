@@ -1305,7 +1305,7 @@ namespace Corner49.Infra.DB {
 			}
 
 			QueryRequestOptions options = new QueryRequestOptions();
-			if (pk != null) options.PartitionKey = pk;
+			options.PartitionKey = pk;
 
 			using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(def, null, options)) {
 				while (feed.HasMoreResults) {
@@ -1317,7 +1317,7 @@ namespace Corner49.Infra.DB {
 							Repo = this.GetType().Name,
 							Method = nameof(RawSQL),
 							Parameters = new Dictionary<string, object?>() {
-									{ "partitionKey", pk?.ToString()  },
+									{ "partitionKey", pk  },
 									{ "sql", sql },
 									{ "parameters", parameters }
 								},
