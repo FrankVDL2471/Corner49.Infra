@@ -338,6 +338,7 @@ namespace Corner49.Infra.DB {
 		/// <summary>
 		/// Counts documents matching a WHERE clause condition.
 		/// </summary>
+		/// <param name="partitionKey">Optional partition key, or null for cross-partition query.</param>
 		/// <param name="where">WHERE clause condition (without the WHERE keyword).</param>
 		/// <param name="cancelToken">Cancellation token.</param>
 		/// <returns>Number of matching documents, or -1 on error.</returns>
@@ -345,7 +346,20 @@ namespace Corner49.Infra.DB {
 		/// WARNING: This performs a cross-partition query and can be expensive.
 		/// Consider using Query with Take for pagination instead of counting all results.
 		/// </remarks>
-		Task<int> CountSQL(string where, System.Threading.CancellationToken cancelToken = default);
+		Task<int> CountSQL(string? partitionKey, string where, System.Threading.CancellationToken cancelToken = default);
+
+		/// <summary>
+		/// Counts documents matching a WHERE clause condition.
+		/// </summary>
+		/// <param name="partitionKey">The hierarchical partition key values.</param>
+		/// <param name="where">WHERE clause condition (without the WHERE keyword).</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Number of matching documents, or -1 on error.</returns>
+		/// <remarks>
+		/// WARNING: This performs a cross-partition query and can be expensive.
+		/// Consider using Query with Take for pagination instead of counting all results.
+		/// </remarks>
+		Task<int> CountSQL(string[]? partitionKey, string where, System.Threading.CancellationToken cancelToken = default);
 
 		/// <summary>
 		/// Executes a SQL query and returns raw JSON elements.
@@ -1006,9 +1020,9 @@ namespace Corner49.Infra.DB {
 			if (token == null) {
 				int idx = sql.IndexOf("where", 0, StringComparison.OrdinalIgnoreCase);
 				if (idx > 0) {
-					result.TotalCount = await this.CountSQL(sql.Substring(idx + 5), cancelToken);
+					result.TotalCount = await this.CountSQL(pk, sql.Substring(idx + 5), cancelToken);
 				} else {
-					result.TotalCount = await this.CountSQL(null, cancelToken);
+					result.TotalCount = await this.CountSQL(pk, null, cancelToken);
 				}
 			}
 
@@ -1244,12 +1258,27 @@ namespace Corner49.Infra.DB {
 			return nextToken;
 		}
 
+
+		public Task<int> CountSQL(string? partitionKey, string where, System.Threading.CancellationToken cancelToken = default) {
+			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
+			return CountSQL(pk, where, cancelToken);
+		}
+		public Task<int> CountSQL(string[]? partitionKey, string where, System.Threading.CancellationToken cancelToken = default) {
+			var pk = GetPartitionKey(partitionKey);
+			return CountSQL(pk, where, cancelToken);
+		}
+
 		/// <inheritdoc />
-		public async Task<int> CountSQL(string where, System.Threading.CancellationToken cancelToken = default) {
+		public async Task<int> CountSQL(PartitionKey? partitionKey, string where, System.Threading.CancellationToken cancelToken = default) {
 			string sql = "select count(1) from c";
 			if (!string.IsNullOrEmpty(where)) {
 				sql += " where " + where;
 			}
+
+			QueryRequestOptions options = new QueryRequestOptions();
+			options.PartitionKey = partitionKey;
+			options.MaxItemCount = 1;
+
 
 			try {
 				using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(sql)) {
