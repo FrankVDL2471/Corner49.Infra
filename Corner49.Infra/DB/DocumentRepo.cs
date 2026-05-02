@@ -865,7 +865,7 @@ namespace Corner49.Infra.DB {
 
 		/// <inheritdoc />
 		public IQueryable<T> CreateQuery(string? partitionKey = null, int? maxItemCount = null) {
-			return CreateQuery(new PartitionKey(partitionKey), maxItemCount);
+			return CreateQuery(partitionKey == null ? null : new PartitionKey(partitionKey), maxItemCount);
 		}
 		/// <inheritdoc />
 		public IQueryable<T> CreateQuery(string[]? partitionKey, int? maxItemCount = null) {
