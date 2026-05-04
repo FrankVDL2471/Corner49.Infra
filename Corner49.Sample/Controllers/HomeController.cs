@@ -1,3 +1,4 @@
+using Corner49.Infra.DB;
 using Corner49.Infra.Jobs;
 using Corner49.Infra.ServiceBus;
 using Corner49.Infra.Storage;
@@ -26,7 +27,11 @@ namespace Corner49.Sample.Controllers {
 			_serviceBus = serviceBus;	
 
 			_blob = new BlobService("Public", config);
+
 		}
+
+
+
 
 		public async Task<IActionResult> Index() {
 			_logger.LogInformation("Load HomePage");
@@ -38,11 +43,12 @@ namespace Corner49.Sample.Controllers {
 
 
 			var data = new MemoryStream();
-			var blob = await _blob.GetBlob("ottogusto", "cat_001.png", data);	
+			var blob = await _blob.GetBlob("ottogusto", "cat_001.png", data);
 
 			//var fl = await _blob.GetFile("test", "test.xml", data);
 			//var img = await _blob.GetFile("ottogusto", "cat_001.png", data);
 
+			var model = await _dataRepo.GetItem("051225", "m3homqjo441hb4");
 			//var qry = await _dataRepo.Query(q => q.Where(c => c.EnumDropdown == TestEnum.Enum1));
 			return View(new DataModel());
 		}
