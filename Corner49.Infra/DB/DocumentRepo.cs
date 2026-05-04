@@ -595,12 +595,18 @@ namespace Corner49.Infra.DB {
 			return this.GetItem(new PartitionKey(partitionId), itemId);
 		}
 		/// <inheritdoc />
-		public Task<T?> GetItem(string[] partitionId, string itemId) {
+		public async Task<T?> GetItem(string[] partitionId, string itemId) {
+			if (partitionId == null) return await this.ExecSQL<T>((string?)null, "select * from c where c.id = @id", 1, new Dictionary<string, object>() { { "@id", itemId } }).FirstOrDefaultAsync();
+
+
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionId) {
 				bld.Add(pk);
 			}
-			return this.GetItem(bld.Build(), itemId);
+			if (partitionId.Length != _partitionKey.Length) {
+				return await this.ExecSQL<T>(bld.Build(), "select * from c where c.id = @id", 1 , new Dictionary<string, object>() { { "@id", itemId } }).FirstOrDefaultAsync();
+			}
+			return await this.GetItem(bld.Build(), itemId);
 		}
 
 
