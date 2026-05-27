@@ -1308,7 +1308,7 @@ namespace Corner49.Infra.DB {
 
 
 			try {
-				using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(sql)) {
+				using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(sql, null, options)) {
 					while (feed.HasMoreResults) {
 						FeedResponse<object> response = await feed.ReadNextAsync(cancelToken);
 
