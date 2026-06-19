@@ -21,32 +21,27 @@ namespace Corner49.Infra.ServiceBus {
 			return _creator.Invoke();
 		}
 
-		public async Task Send(List<ServiceBusCommand> commands) {
+		public async Task<int> Send(List<ServiceBusCommand> commands) {
 			var sender = await GetSender();
 
-			var index = 0;
-			while (index < commands.Count) {
-				using var batch = await sender.CreateMessageBatchAsync();
-				while (index < commands.Count) {
-					var msg = CreateMessage(commands[index]);
-					var success = batch.TryAddMessage(msg);
-					if (!success || index == commands.Count - 1) {
-						try {
-							await sender.SendMessagesAsync(batch);
-							if (success) {
-								index++;
-							}
-							break;
-						} catch {
-							await sender.DisposeAsync();
-							throw;
-						}
-					} else {
-						index++;
+			var cnt = 0;
+			try {
+				using (var batch = await sender.CreateMessageBatchAsync()) {
+					foreach (var cmd in commands) {
+						var msg = CreateMessage(cmd);
+						var success = batch.TryAddMessage(msg);
+						if (!success) break;
+						cnt++;
 					}
+					await sender.SendMessagesAsync(batch);
 				}
+			} catch (Exception err) {
+				_logger.LogError(err, $"Error sending batch of {commands.Count} messages to {sender.EntityPath} : {err.Message}");
+				throw;
+			} finally {
+				await sender.DisposeAsync();
 			}
-			await sender.DisposeAsync();
+			return cnt;
 		}
 
 
