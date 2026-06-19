@@ -36,7 +36,7 @@ namespace Corner49.Infra.ServiceBus {
 					await sender.SendMessagesAsync(batch);
 				}
 			} catch (Exception err) {
-				_logger.LogError(err, $"Error sending batch of {commands.Count} messages to {sender.EntityPath} : {err.Message}");
+				_logger.LogError(err, $"Error sending batch to {sender.EntityPath} : {err.Message}");
 				throw;
 			} finally {
 				await sender.DisposeAsync();
