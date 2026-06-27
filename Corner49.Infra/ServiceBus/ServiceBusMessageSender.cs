@@ -30,7 +30,10 @@ namespace Corner49.Infra.ServiceBus {
 					foreach (var cmd in commands) {
 						var msg = CreateMessage(cmd);
 						var success = batch.TryAddMessage(msg);
-						if (!success) break;
+						if (!success) {
+							_logger.LogWarning("Message {MessageId} could not be added to the batch. Sending current batch and starting a new one.", msg.MessageId);
+							break;
+						}
 						cnt++;
 					}
 					await sender.SendMessagesAsync(batch);

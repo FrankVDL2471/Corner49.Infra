@@ -38,13 +38,16 @@ namespace Corner49.Infra.Tools {
 			}
 			return buffer;
 		}
-		public static byte[] ResizeImage(byte[] imageData, float maxWidth, float maxHeight, SKFilterQuality quality = SKFilterQuality.Medium) {
+		public static byte[] ResizeImage(byte[] imageData, float maxWidth, float maxHeight, SKSamplingOptions? sampling = null) {
 			MemoryStream ms = new MemoryStream(imageData);
-			return ResizeImage(ms, maxWidth, maxHeight, quality);
+			return ResizeImage(ms, maxWidth, maxHeight, sampling);
 		}
 
-		public static byte[] ResizeImage(Stream ms, float maxWidth, float maxHeight, SKFilterQuality quality = SKFilterQuality.Medium) {
+		public static byte[] ResizeImage(Stream ms, float maxWidth, float maxHeight, SKSamplingOptions? sampling = null) {
 			SKBitmap sourceBitmap = SKBitmap.Decode(ms);
+
+			// Use default medium quality sampling if not specified
+			sampling ??= new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear);
 
 
 			float sourceRatio = (float)sourceBitmap.Width / sourceBitmap.Height;
@@ -59,7 +62,8 @@ namespace Corner49.Infra.Tools {
 			int width = (int)(sourceBitmap.Width * ratio);
 			int height = (int)(sourceBitmap.Height * ratio);
 
-			SKBitmap scaledBitmap = sourceBitmap.Resize(new SKImageInfo(width, height), quality);
+			var imageInfo = new SKImageInfo(width, height);
+			SKBitmap scaledBitmap = sourceBitmap.Resize(imageInfo, sampling.Value);
 			SKImage scaledImage = SKImage.FromBitmap(scaledBitmap);
 
 			SKData data = scaledImage.Encode();
@@ -78,7 +82,9 @@ namespace Corner49.Infra.Tools {
 			return Save(buffer);
 		}
 		public static string Save(Stream data, float maxWidth, float maxHeight) {
-			byte[] buffer = ResizeImage(data, maxWidth, maxHeight, SKFilterQuality.High);
+			// Use high quality sampling (equivalent to old SKFilterQuality.High)
+			var highQuality = new SKSamplingOptions(SKCubicResampler.Mitchell);
+			byte[] buffer = ResizeImage(data, maxWidth, maxHeight, highQuality);
 			return Save(buffer);
 		}
 

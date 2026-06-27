@@ -9,7 +9,7 @@
     <Compile Remove="Controllers\WeatherForecastController.cs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.16.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Corner49.Infra\Corner49.Infra.csproj" />

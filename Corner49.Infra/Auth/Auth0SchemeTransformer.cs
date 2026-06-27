@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Options;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 
 namespace Corner49.Infra.Auth {
 
@@ -49,19 +49,11 @@ namespace Corner49.Infra.Auth {
 
 
 			// Apply it as a requirement for all operations
-			var scheme = new OpenApiSecurityScheme {
-				Reference = new OpenApiReference {
-					Type = ReferenceType.SecurityScheme,
-					Id = JwtBearerDefaults.AuthenticationScheme
-				},
-				Scheme = "oauth2",
-				Name = JwtBearerDefaults.AuthenticationScheme,
-				In = ParameterLocation.Header
-			};
+			var schemeRef = new OpenApiSecuritySchemeReference("oath2", document);
 
 			foreach (var operation in document.Paths.Values.SelectMany(path => path.Operations)) {
 				operation.Value.Security.Add(new OpenApiSecurityRequirement {
-					[scheme] = new[] { "openid" }
+					[schemeRef] = ["openid"]
 				});
 			}
 		}
