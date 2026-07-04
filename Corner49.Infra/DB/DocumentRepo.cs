@@ -28,7 +28,7 @@ namespace Corner49.Infra.DB {
 		/// Optional callback to capture diagnostic information for all operations.
 		/// Use this to monitor RU consumption, latency, and performance metrics.
 		/// </summary>
-		Action<DocumentDiagnostics>? OnDiagnostics { get; set; }
+		Func<DocumentDiagnostics, Task>? OnDiagnostics { get; set; }
 
 
 		/// <summary>
@@ -59,7 +59,33 @@ namespace Corner49.Infra.DB {
 		/// Use this overload for containers with hierarchical partition keys.
 		/// Order of partition key values must match the container definition.
 		/// </remarks>
+		Task<T?> ReadItem(string[] paritionId, string itemId);
+
+
+		/// <summary>
+		/// Retrieves a single document by its partition key and item ID.
+		/// </summary>
+		/// <param name="paritionId">The partition key value (single partition key).</param>
+		/// <param name="itemId">The unique item ID within the partition.</param>
+		/// <returns>The document if found, otherwise null.</returns>
+		/// <remarks>
+		/// This is the most efficient way to retrieve a document (point read).
+		/// Typically consumes 1 RU for documents up to 1KB.
+		/// </remarks>
+		Task<T?> ReadItem(string paritionId, string itemId);
+
+		/// <summary>
+		/// Retrieves a single document by its hierarchical partition key and item ID.
+		/// </summary>
+		/// <param name="paritionId">The hierarchical partition key values.</param>
+		/// <param name="itemId">The unique item ID within the partition.</param>
+		/// <returns>The document if found, otherwise null.</returns>
+		/// <remarks>
+		/// Use this overload for containers with hierarchical partition keys.
+		/// Order of partition key values must match the container definition.
+		/// </remarks>
 		Task<T?> GetItem(string[] paritionId, string itemId);
+
 
 		/// <summary>
 		/// Retrieves all documents within a partition or the entire container.
@@ -497,7 +523,7 @@ namespace Corner49.Infra.DB {
 
 
 		/// <inheritdoc />
-		public Action<DocumentDiagnostics>? OnDiagnostics { get; set; }
+		public Func<DocumentDiagnostics, Task>? OnDiagnostics { get; set; }
 
 		/// <summary>
 		/// Initializes the database and container with optional throughput configuration.
@@ -604,7 +630,7 @@ namespace Corner49.Infra.DB {
 				bld.Add(pk);
 			}
 			if (partitionId.Length != _partitionKey.Length) {
-				return await this.ExecSQL<T>(bld.Build(), "select * from c where c.id = @id", 1 , new Dictionary<string, object>() { { "@id", itemId } }).FirstOrDefaultAsync();
+				return await this.ExecSQL<T>(bld.Build(), "select * from c where c.id = @id", 1, new Dictionary<string, object>() { { "@id", itemId } }).FirstOrDefaultAsync();
 			}
 			return await this.GetItem(bld.Build(), itemId);
 		}
@@ -619,7 +645,7 @@ namespace Corner49.Infra.DB {
 					var resp = await this.Container.ReadItemAsync<T>(itemId, pk);
 					if (this.OnDiagnostics != null) {
 						try {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(GetItem),
 								Parameters = new Dictionary<string, object?>() {
@@ -655,6 +681,83 @@ namespace Corner49.Infra.DB {
 			throw new DocumentException($"GetItem({pk},{itemId}) failed", lastErr);
 		}
 
+
+
+		public Task<T?> ReadItem(string partitionId, string itemId) {
+			return this.ReadItem(new PartitionKey(partitionId), itemId);
+		}
+		/// <inheritdoc />
+		public async Task<T?> ReadItem(string[] partitionId, string itemId) {
+			if (partitionId == null) return await this.ExecSQL<T>((string?)null, "select * from c where c.id = @id", 1, new Dictionary<string, object>() { { "@id", itemId } }).FirstOrDefaultAsync();
+
+
+			PartitionKeyBuilder bld = new PartitionKeyBuilder();
+			foreach (var pk in partitionId) {
+				bld.Add(pk);
+			}
+			if (partitionId.Length != _partitionKey.Length) {
+				return await this.ExecSQL<T>(bld.Build(), "select * from c where c.id = @id", 1, new Dictionary<string, object>() { { "@id", itemId } }).FirstOrDefaultAsync();
+			}
+			return await this.ReadItem(bld.Build(), itemId);
+		}
+
+
+		private async Task<T?> ReadItem(PartitionKey pk, string itemId) {
+			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
+
+			Exception? lastErr = null;
+			for (int retry = 0; retry <= 3; retry++) {
+				try {
+					var resp = await this.Container.ReadItemStreamAsync(itemId, pk);
+					if (this.OnDiagnostics != null) {
+						try {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
+								Repo = this.GetType().Name,
+								Method = nameof(GetItem),
+								Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", pk.ToString() },
+									{ "itemId", itemId }
+								},
+								StatusCode = resp.StatusCode,
+								StartTime = resp.Diagnostics?.GetStartTimeUtc(),
+								ElapsedTime = resp.Diagnostics?.GetClientElapsedTime(),
+								TotalRequestCharge = resp.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+							});
+						} catch {
+						}
+					}
+
+					if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+					if (resp.IsSuccessStatusCode) {
+						return await JsonCosmosSerializer.Instance.FromStreamAsync<T>(resp.Content);
+					}
+					if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						await Task.Delay(TimeSpan.FromSeconds(5));
+					} else if (resp.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
+						await Task.Delay(TimeSpan.FromSeconds(5));
+					} else {
+						throw new DocumentException($"ReadItem({pk},{itemId}) failed", new Exception(resp.ErrorMessage), resp.StatusCode);
+					}
+				} catch (CosmosException err) {
+					lastErr = err;
+					if (err.StatusCode == System.Net.HttpStatusCode.NotFound) {
+						return null;
+					} else if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
+						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+					} else {
+						throw new DocumentException($"ReadItem({pk},{itemId}) failed", err, err.StatusCode);
+					}
+				} catch (Exception ex) {
+					throw new DocumentException($"ReadItem({pk},{itemId}) failed", ex);
+				}
+			}
+			throw new DocumentException($"ReadItem({pk},{itemId}) failed", lastErr);
+		}
+
+
+
 		/// <inheritdoc />
 		public IAsyncEnumerable<T> GetItems(string? paritionId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
@@ -689,7 +792,7 @@ namespace Corner49.Infra.DB {
 					var resp = await this.Container.CreateItemAsync(item, pk);
 					if (this.OnDiagnostics != null) {
 						try {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(AddItem),
 								Parameters = new Dictionary<string, object?>() {
@@ -744,7 +847,7 @@ namespace Corner49.Infra.DB {
 					var resp = await this.Container.UpsertItemAsync(item, pk);
 					if (this.OnDiagnostics != null) {
 						try {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(UpsertItem),
 								Parameters = new Dictionary<string, object?>() {
@@ -800,7 +903,7 @@ namespace Corner49.Infra.DB {
 					var resp = await this.Container.PatchItemAsync<T>(itemId, pk, patches);
 					if (this.OnDiagnostics != null) {
 						try {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(PatchItem),
 								Parameters = new Dictionary<string, object?>() {
@@ -858,7 +961,7 @@ namespace Corner49.Infra.DB {
 					var resp = await this.Container.DeleteItemAsync<T>(itemId, pk);
 					if (this.OnDiagnostics != null) {
 						try {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(DeleteItem),
 								Parameters = new Dictionary<string, object?>() {
@@ -938,7 +1041,7 @@ namespace Corner49.Infra.DB {
 
 					if (this.OnDiagnostics != null) {
 						try {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(Read),
 								Parameters = new Dictionary<string, object?>() {
@@ -1054,7 +1157,7 @@ namespace Corner49.Infra.DB {
 
 					if (this.OnDiagnostics != null) {
 						try {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(Query),
 								Parameters = new Dictionary<string, object?>() {
@@ -1171,7 +1274,7 @@ namespace Corner49.Infra.DB {
 
 					if (this.OnDiagnostics != null) {
 						try {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(ExecSQL),
 								Parameters = new Dictionary<string, object?>() {
@@ -1195,7 +1298,7 @@ namespace Corner49.Infra.DB {
 						feed = await feedIterator.ReadNextAsync(cancelToken);
 
 						if (this.OnDiagnostics != null) {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(ExecSQL),
 								Parameters = new Dictionary<string, object?>() {
@@ -1253,7 +1356,7 @@ namespace Corner49.Infra.DB {
 
 					if (this.OnDiagnostics != null) {
 						try {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(ReadSQL),
 								Parameters = new Dictionary<string, object?>() {
@@ -1314,7 +1417,7 @@ namespace Corner49.Infra.DB {
 
 						if (this.OnDiagnostics != null) {
 							try {
-								this.OnDiagnostics(new DocumentDiagnostics {
+								_ = this.OnDiagnostics(new DocumentDiagnostics {
 									Repo = this.GetType().Name,
 									Method = nameof(CountSQL),
 									Parameters = new Dictionary<string, object?>() {
@@ -1374,7 +1477,7 @@ namespace Corner49.Infra.DB {
 
 					try {
 						if (this.OnDiagnostics != null) {
-							this.OnDiagnostics(new DocumentDiagnostics {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
 								Repo = this.GetType().Name,
 								Method = nameof(RawSQL),
 								Parameters = new Dictionary<string, object?>() {

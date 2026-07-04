@@ -484,6 +484,16 @@ namespace Corner49.Infra {
 
 		public InfraBuilder AddDocumentDB(Action<DocumentDBBuilder>? repos = null) {
 			_docDBBuilder = this.Services.AddDocumentDB(this.Configuration, repos);
+
+			try {
+				if (!Debugger.IsAttached) {
+					Type defaultTrace = Type.GetType("Microsoft.Azure.Cosmos.Core.Trace.DefaultTrace,Microsoft.Azure.Cosmos.Direct");
+					TraceSource traceSource = (TraceSource)defaultTrace.GetProperty("TraceSource").GetValue(null);
+					if (traceSource?.Listeners != null) traceSource.Listeners.Remove("Default");
+				}
+			} catch (Exception ex) {
+				Console.WriteLine($"Error disabling CosmosDB default trace: {ex.Message}");
+			}
 			return this;
 		}
 

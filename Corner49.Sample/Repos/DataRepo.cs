@@ -26,11 +26,12 @@ namespace Corner49.Sample.Repos {
 
 		}
 
-		private void OnDiagnostics(string repo, DocumentDiagnostics diag) {
+		private Task OnDiagnostics(string repo, DocumentDiagnostics diag) {
 			string args = string.Join(", ", diag.Parameters?.Select(c => $"{c.Key} = '{c.Value}'"));
 
 
 			Console.WriteLine($"Diagnostics {repo} : {diag.Method} ({args}) - {diag.ElapsedTime?.TotalMilliseconds} msec, {diag.TotalRequestCharge} RUs");
+			return Task.CompletedTask;
 		}
 
 

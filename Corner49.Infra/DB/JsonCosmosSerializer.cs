@@ -13,12 +13,19 @@ namespace Corner49.Infra.DB {
 			_options.SetDefault();
 		}
 
+		public static JsonCosmosSerializer Instance { get; private set; } = new JsonCosmosSerializer();
+
 		public override T FromStream<T>(Stream stream) {
 			using (StreamReader reader = new StreamReader(stream)) {
 				string json = reader.ReadToEnd();
 				return JsonSerializer.Deserialize<T>(json, _options);
 			}
 		}
+
+		public ValueTask<T?> FromStreamAsync<T>(Stream stream) {
+			return JsonSerializer.DeserializeAsync<T>(stream, _options);			
+		}
+
 
 		public override Stream ToStream<T>(T input) {
 			MemoryStream mem = new MemoryStream();
