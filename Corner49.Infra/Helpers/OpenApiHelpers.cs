@@ -10,9 +10,14 @@ namespace Corner49.Infra.Helpers {
 		public static void BuildSchemas(this OpenApiOptions options) {
 			options.AddSchemaTransformer((schema, context, cancelToken) => {
 				if (context.JsonPropertyInfo?.PropertyType == null) return Task.CompletedTask;
+				if (context.JsonPropertyInfo?.Name == null) return Task.CompletedTask;
 
-				schema.CompleteSchema(context.JsonPropertyInfo.PropertyType, context.JsonPropertyInfo.Name);
+				try {
+					schema.CompleteSchema(context.JsonPropertyInfo.PropertyType, context.JsonPropertyInfo.Name);
 
+				} catch (Exception err) {
+					Console.Error.WriteLine($"OpenApi.BuildSchemas '{context.JsonPropertyInfo.Name}' failed : {err.Message}");
+				}
 
 				return Task.CompletedTask;
 			});
@@ -41,6 +46,7 @@ namespace Corner49.Infra.Helpers {
 
 			if (prpType.IsEnum == true) {
 				if (doc.Enum?.Any() != true) {
+					if (doc.Enum == null) doc.Enum = new List<JsonNode>();
 					foreach (var nm in Enum.GetNames(prpType)) {
 						doc.Enum.Add(JsonValue.Create(nm));
 					}
@@ -51,13 +57,14 @@ namespace Corner49.Infra.Helpers {
 				doc.Format = "decimal";
 			} else if (baseType.Namespace == "System.Collections.Generic") {
 				var tp = baseType.GenericTypeArguments[0];
+
 				// Items is IOpenApiSchema in v10, which may have different mutability
 				// Recursive CompleteSchema call may not work on interface types
 				// TODO: Investigate v10 pattern for modifying collection item schemas
 			} else if ((!prpType.IsValueType) && (prpType != typeof(string))) {
 				// Complex type handling
 				foreach (var prp in prpType.GetProperties()) {
-					var key = doc.Properties.Keys.FirstOrDefault(c => c.Equals(prp.Name, StringComparison.OrdinalIgnoreCase));
+					var key = doc.Properties?.Keys?.FirstOrDefault(c => c.Equals(prp.Name, StringComparison.OrdinalIgnoreCase));
 					if (key == null) continue;
 
 					// Properties[key] returns IOpenApiSchema which has read-only properties in v10
