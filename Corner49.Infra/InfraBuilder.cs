@@ -290,7 +290,7 @@ namespace Corner49.Infra {
 
 			_services.AddOpenApi((options) => {
 				if (_auth == "auth0") {
-					options.AddDocumentTransformer<Auth0SchemeTransformer>();
+					//options.AddDocumentTransformer<Auth0SchemeTransformer>();
 				}
 
 				options.AddDocumentTransformer((doc, context, cancelToken) => {
