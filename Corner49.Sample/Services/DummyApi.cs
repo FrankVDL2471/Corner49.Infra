@@ -10,8 +10,8 @@ namespace Corner49.Sample.Services {
 		}
 
 
-		protected override void OnRequest(string method, string url, string? request, string? response, bool? isSuccess) {
-			base.OnRequest(method, url, request, response, isSuccess);
+		protected override void OnRequest(string method, string url, string? request, string? response, bool? isSuccess, long? msec) {
+			base.OnRequest(method, url, request, response, isSuccess, msec);
 		}
 
 
