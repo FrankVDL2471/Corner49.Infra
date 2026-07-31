@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="NuGet.Packaging" Version="7.6.0" />
     <PackageReference Include="NuGet.Protocol" Version="7.6.0" />
-    <PackageReference Include="OpenTelemetry.Api" Version="1.16.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.17.0" />
   </ItemGroup>
 
   <ItemGroup>
