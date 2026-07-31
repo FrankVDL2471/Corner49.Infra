@@ -77,7 +77,7 @@ namespace Corner49.Infra.Http {
 			return Task.CompletedTask;
 		}
 
-		protected virtual void OnRequest(string method, string url, string? request, string? response, bool? isSuccess) {
+		protected virtual void OnRequest(string method, string url, string? request, string? response, bool? isSuccess, long? msec) {
 
 		}
 
@@ -90,6 +90,8 @@ namespace Corner49.Infra.Http {
 		public async Task<T?> Get<T>(string url, CancellationToken cancellationToken = default) where T : class {
 			var path = this.CompleteUrl(url);
 
+			var sw = System.Diagnostics.Stopwatch.StartNew();
+
 			var request = new HttpRequestMessage(HttpMethod.Get, path);
 			var client = await this.GetClient();
 			using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -99,7 +101,9 @@ namespace Corner49.Infra.Http {
 			string respData = null;
 			try {
 				respData = await resp.Content.ReadAsStringAsync();
-				this.OnRequest("GET", path, null, respData, resp.IsSuccessStatusCode);
+
+				sw.Stop();
+				this.OnRequest("GET", path, null, respData, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds);
 
 				if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 
@@ -114,6 +118,8 @@ namespace Corner49.Infra.Http {
 		public async Task<string?> Get(string url, CancellationToken cancellationToken = default) {
 			var path = this.CompleteUrl(url);
 
+			var sw = System.Diagnostics.Stopwatch.StartNew();
+
 			var request = new HttpRequestMessage(HttpMethod.Get, path);
 			var client = await this.GetClient();
 			using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -121,7 +127,8 @@ namespace Corner49.Infra.Http {
 			string respData = null;
 			try {
 				respData = await resp.Content.ReadAsStringAsync();
-				this.OnRequest("GET", path, null, respData, resp.IsSuccessStatusCode);
+				sw.Stop();
+				this.OnRequest("GET", path, null, respData, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds);
 
 				if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 
@@ -149,6 +156,8 @@ namespace Corner49.Infra.Http {
 		public async Task<T?> Put<TBody, T>(string url, TBody body, CancellationToken cancellationToken = default) where T : class where TBody : class {
 			var path = this.CompleteUrl(url);
 
+			var sw = System.Diagnostics.Stopwatch.StartNew();
+
 			var request = new HttpRequestMessage(HttpMethod.Put, path);
 			string data = JsonSerializer.Serialize(body, _options);
 			request.Content = new StringContent(data, System.Text.Encoding.UTF8, "application/json");
@@ -159,7 +168,8 @@ namespace Corner49.Infra.Http {
 			string respData = null;
 			try {
 				respData = await resp.Content.ReadAsStringAsync();
-				this.OnRequest("PUT", path, data, respData, resp.IsSuccessStatusCode);
+				sw.Stop();
+				this.OnRequest("PUT", path, data, respData, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds);
 
 				if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 
@@ -174,15 +184,17 @@ namespace Corner49.Infra.Http {
 		public async Task<T?> Put<T>(string url, CancellationToken cancellationToken = default) where T : class {
 			var path = this.CompleteUrl(url);
 
-			var request = new HttpRequestMessage(HttpMethod.Put, path);
+			var sw = System.Diagnostics.Stopwatch.StartNew();
 
+			var request = new HttpRequestMessage(HttpMethod.Put, path);
 			var client = await this.GetClient();
 			using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
 			string respData = null;
 			try {
 				respData = await resp.Content.ReadAsStringAsync();
-				this.OnRequest("PUT", path, string.Empty, respData, resp.IsSuccessStatusCode);
+				sw.Stop();
+				this.OnRequest("PUT", path, string.Empty, respData, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds);
 
 				if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 
@@ -196,6 +208,8 @@ namespace Corner49.Infra.Http {
 		public async Task<T?> Patch<TBody, T>(string url, TBody body, CancellationToken cancellationToken = default) where T : class where TBody : class {
 			var path = this.CompleteUrl(url);
 
+			var sw = System.Diagnostics.Stopwatch.StartNew();
+
 			var request = new HttpRequestMessage(HttpMethod.Patch, path);
 			string data = JsonSerializer.Serialize(body, _options);
 			request.Content = new StringContent(data, System.Text.Encoding.UTF8, "application/json");
@@ -207,7 +221,8 @@ namespace Corner49.Infra.Http {
 			try {
 				if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 				respData = await resp.Content.ReadAsStringAsync();
-				this.OnRequest("PATCH", path, data, respData, resp.IsSuccessStatusCode);
+				sw.Stop();
+				this.OnRequest("PATCH", path, data, respData, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds);
 
 				var rtrn = JsonSerializer.Deserialize<T>(respData, _options);
 				return rtrn;
@@ -221,6 +236,7 @@ namespace Corner49.Infra.Http {
 			var path = this.CompleteUrl(url);
 
 
+			var sw = System.Diagnostics.Stopwatch.StartNew();
 			var request = new HttpRequestMessage(HttpMethod.Post, path);
 
 			string data = JsonSerializer.Serialize<TBody>(body, _options);
@@ -232,7 +248,8 @@ namespace Corner49.Infra.Http {
 			string? respData = null;
 			try {
 				respData = await resp.Content.ReadAsStringAsync();
-				this.OnRequest("POST", path, data, respData, resp.IsSuccessStatusCode);
+				sw.Stop();
+				this.OnRequest("POST", path, data, respData, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds	);
 
 				if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 				var rtrn = JsonSerializer.Deserialize<T>(respData, _options);
@@ -246,6 +263,8 @@ namespace Corner49.Infra.Http {
 		public async Task<string?> Post<TBody>(string url, TBody body, CancellationToken cancellationToken = default) where TBody : class {
 			var path = this.CompleteUrl(url);
 
+			var sw = System.Diagnostics.Stopwatch.StartNew();
+
 			var request = new HttpRequestMessage(HttpMethod.Post, path);
 			string data = JsonSerializer.Serialize(body, _options);
 			request.Content = new StringContent(data, System.Text.Encoding.UTF8, "application/json");
@@ -256,7 +275,8 @@ namespace Corner49.Infra.Http {
 			string? respData = null;
 			try {
 				respData = await resp.Content.ReadAsStringAsync();
-				this.OnRequest("POST", path, data, respData, resp.IsSuccessStatusCode);
+				sw.Stop();
+				this.OnRequest("POST", path, data, respData, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds);
 
 				if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 
@@ -269,13 +289,17 @@ namespace Corner49.Infra.Http {
 		public async Task Post(string url, string? body, CancellationToken cancellationToken = default) {
 			var path = this.CompleteUrl(url);
 
+
+			var sw = System.Diagnostics.Stopwatch.StartNew();
+
 			var request = new HttpRequestMessage(HttpMethod.Post, path);
 			if (body != null) request.Content = new StringContent(body, System.Text.Encoding.UTF8, "plain/text");
 
 			var client = await this.GetClient();
 			using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 			try {
-				this.OnRequest("POST", path, null, null, resp.IsSuccessStatusCode);
+				sw.Stop();				
+				this.OnRequest("POST", path, null, null, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds);
 				if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 			} catch (HttpRequestException hre) {
 				throw new ApiClientException(hre.StatusCode, $"POST {client.BaseAddress}{path} failed : {hre.StatusCode} - {hre.Message}", hre);
