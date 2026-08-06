@@ -31,12 +31,12 @@ namespace Corner49.Infra.ServiceBus {
 						var msg = CreateMessage(cmd);
 						var success = batch.TryAddMessage(msg);
 						if (!success) {
-							_logger.LogWarning("Message {MessageId} could not be added to the batch. Sending current batch and starting a new one.", msg.MessageId);
+//							_logger.LogWarning("Message {MessageId} could not be added to the batch. Sending current batch and starting a new one.", msg.MessageId);
 							break;
 						}
 						cnt++;
 					}
-					await sender.SendMessagesAsync(batch);
+					if (batch.Count > 0) await sender.SendMessagesAsync(batch);
 				}
 			} catch (Exception err) {
 				_logger.LogError(err, $"Error sending batch to {sender.EntityPath} : {err.Message}");
