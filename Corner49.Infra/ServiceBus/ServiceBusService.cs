@@ -388,7 +388,7 @@ namespace Corner49.Infra.ServiceBus {
 					}
 
 					var resp = await _admin.GetQueueRuntimePropertiesAsync(queueName);
-					return options.DealLetter ? resp?.Value?.DeadLetterMessageCount : resp?.Value?.TotalMessageCount;
+					return options.DealLetter ? resp?.Value?.DeadLetterMessageCount : resp?.Value?.ActiveMessageCount;
 				} else {
 					var name = options.SubscriptionName;
 					if (_config.DeveloperMode) {
@@ -396,7 +396,7 @@ namespace Corner49.Infra.ServiceBus {
 						name = name.Length > 50 ? name.Substring(0, 50) : name;
 					}
 					var resp = await _admin.GetSubscriptionRuntimePropertiesAsync(options.Name, name);
-					return options.DealLetter ? resp?.Value?.DeadLetterMessageCount : resp?.Value?.TotalMessageCount;
+					return options.DealLetter ? resp?.Value?.DeadLetterMessageCount : resp?.Value?.ActiveMessageCount;
 				}
 
 			} catch (Exception er) {
