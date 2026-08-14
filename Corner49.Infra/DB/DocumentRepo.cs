@@ -639,7 +639,7 @@ namespace Corner49.Infra.DB {
 		private async Task<T?> GetItem(PartitionKey pk, string itemId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
-			Exception? lastErr = null;
+			CosmosException? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.ReadItemAsync<T>(itemId, pk);
@@ -678,7 +678,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"GetItem({pk},{itemId}) failed", ex);
 				}
 			}
-			throw new DocumentException($"GetItem({pk},{itemId}) failed", lastErr);
+			throw new DocumentException($"GetItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}");
 		}
 
 
@@ -705,7 +705,7 @@ namespace Corner49.Infra.DB {
 		private async Task<T?> ReadItem(PartitionKey pk, string itemId) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
-			Exception? lastErr = null;
+			CosmosException? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.ReadItemStreamAsync(itemId, pk);
@@ -753,7 +753,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"ReadItem({pk},{itemId}) failed", ex);
 				}
 			}
-			throw new DocumentException($"ReadItem({pk},{itemId}) failed", lastErr);
+			throw new DocumentException($"ReadItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}");
 		}
 
 
@@ -786,7 +786,7 @@ namespace Corner49.Infra.DB {
 		private async Task<T> AddItem(PartitionKey pk, T item) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
-			Exception? lastErr = null;
+			CosmosException? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.CreateItemAsync(item, pk);
@@ -823,7 +823,8 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"AddItem failed", ex);
 				}
 			}
-			throw new DocumentException($"AddItem failed", lastErr);
+			throw new DocumentException($"AddItem failed : {lastErr?.StatusCode} - {lastErr?.Message}");
+
 		}
 
 		/// <inheritdoc />
@@ -841,7 +842,7 @@ namespace Corner49.Infra.DB {
 		private async Task<T> UpsertItem(PartitionKey pk, T item, Action<HttpStatusCode>? status = null) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
-			Exception? lastErr = null;
+			CosmosException? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.UpsertItemAsync(item, pk);
@@ -879,7 +880,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"UpsertItem failed", err);
 				}
 			}
-			throw new DocumentException($"UpsertItem failed", lastErr);
+			throw new DocumentException($"UpsertItem failed : {lastErr?.StatusCode} - {lastErr?.Message}");
 		}
 
 		/// <inheritdoc />
@@ -897,7 +898,7 @@ namespace Corner49.Infra.DB {
 		private async Task<T> PatchItem(PartitionKey pk, string itemId, IReadOnlyList<PatchOperation> patches) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
-			Exception? lastErr = null;
+			CosmosException? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.PatchItemAsync<T>(itemId, pk, patches);
@@ -934,8 +935,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"PatchItem({pk},{itemId}) failed", err);
 				}
 			}
-			throw new DocumentException($"PatchItem({pk},{itemId}) failed", lastErr);
-
+			throw new DocumentException($"PatchItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}");			
 		}
 
 		/// <inheritdoc />
@@ -955,7 +955,7 @@ namespace Corner49.Infra.DB {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 
-			Exception? lastErr = null;
+			CosmosException? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.DeleteItemAsync<T>(itemId, pk);
@@ -994,7 +994,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"DeleteItem({pk},{itemId}) failed", err);
 				}
 			}
-			throw new DocumentException($"DeleteItem({pk},{itemId}) failed", lastErr);
+			throw new DocumentException($"DeleteItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}");
 
 
 		}
