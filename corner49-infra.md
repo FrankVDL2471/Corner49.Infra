@@ -156,6 +156,8 @@ Partition keys can be **hierarchical** — pass multiple path segments to `GetRe
 | `BulkInsert` / `BulkUpdate` / `BulkDelete` | fire-and-forget-style bulk ops over `IAsyncEnumerable<T>`, using Cosmos bulk execution | fire many concurrent requests via `Task.WhenAll` — fine for background/migration jobs, be mindful of RU budget on the container |
 | `GetChangeFeedProcessor` / `GetAllChangesFeedProcessor` | Cosmos DB **change feed** — event-driven reaction to inserts/updates on a container | creates/uses a lease container (default name `changeLeases`); call `.StartAsync()` on the returned `ChangeFeedProcessor`. Use for cache invalidation, fan-out to Service Bus, search-index sync, etc. |
 | `Exists()` | check if the container exists (cached after first call) | |
+| `GetThroughputStats()` | snapshot of client-observed RU/s, provisioned RU/s, pressure ratio and recent 429 count | see [Throughput / RU pressure monitoring](#throughput--ru-pressure-monitoring) |
+| `WaitForCapacity(pressureThreshold?, ...)` | await between batches/items in an intensive job to pause before hitting 429s | see below |
 
 **Performance guidance baked into the API (follow these when writing against it):**
 1. Always pass the partition key when you have it — every method accepting `null` for `partitionKey` is doing a cross-partition query.
@@ -166,6 +168,46 @@ Partition keys can be **hierarchical** — pass multiple path segments to `GetRe
 6. Retries: point reads/writes automatically retry up to 3 times on `429 TooManyRequests` / `408 RequestTimeout` (honoring `Retry-After`), and `Init()` retries up to 5 times on `429`. You generally don't need your own retry wrapper for these statuses.
 7. Attach `OnDiagnostics` on a repo (per instance) during development/perf investigations to see RU charge and latency per call without needing to inspect Cosmos metrics in the portal.
 8. All repos from `AddDocumentDB` are singletons and share one cached `CosmosClient` per connection string — this is intentional (Cosmos SDK guidance is to reuse `CosmosClient`), don't try to scope them per-request.
+
+### Throughput / RU pressure monitoring
+
+Every `DocumentRepo<T>` tracks a rolling 10-second window of the RU charges and 429s it observes
+(the same `RequestCharge` data that already flows through `OnDiagnostics`), and caches the
+container's actual provisioned RU/s (read via `ReadThroughputAsync`, refreshed every 5 minutes).
+This backs two methods intended for RU-intensive jobs (bulk imports, migrations, batch
+processing) that want to slow themselves down **before** they start getting `429`, without
+raising provisioned throughput:
+
+```csharp
+Task<ThroughputStats> GetThroughputStats();
+
+Task WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null,
+                      TimeSpan? maxWait = null, CancellationToken cancellationToken = default);
+```
+
+`ThroughputStats` exposes `RequestUnitsPerSecond`, `ProvisionedRequestUnits` (null if unknown —
+e.g. serverless accounts have no fixed RU/s), `PressureRatio` (`RequestUnitsPerSecond /
+ProvisionedRequestUnits`, null if unknown), and `Throttled429Count` for the window.
+
+Typical usage in a processing loop:
+
+```csharp
+foreach (var item in items) {
+    await _repo.WaitForCapacity(); // pauses (default: up to 80% of provisioned RU/s) if under pressure
+    await _repo.UpsertItem(item.PartitionKey, item);
+}
+```
+
+`WaitForCapacity` returns as soon as the container is no longer under pressure, or when
+`maxWait` elapses (it does not throw — inspect `GetThroughputStats()` afterward if you need to
+know why it gave up).
+
+**Visibility caveat**: `RequestUnitsPerSecond`/`PressureRatio` only reflect RU usage made
+through *this* `DocumentRepo<T>` instance, i.e. this process. They're blind to other app
+instances, or other containers sharing the same database-level throughput. `Throttled429Count`
+partially compensates for this — a 429 means the container is over budget account-wide
+regardless of who caused it, so `WaitForCapacity` treats either signal (high pressure ratio *or*
+recent 429s) as "under pressure."
 
 ### Errors
 

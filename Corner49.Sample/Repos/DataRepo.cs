@@ -11,6 +11,8 @@ namespace Corner49.Sample.Repos {
 		Task<DataModel?> GetItem(string pk, string id);
 
 		Task<QueryResult<DataModel>> Query(Func<IQueryable<DataModel>, IQueryable<DataModel>> query);
+
+		Task ImportBatch(IEnumerable<DataModel> items);
 	}
 
 	public class DataRepo : IDataRepo, IDocumentRepoInitializer {
@@ -46,6 +48,15 @@ namespace Corner49.Sample.Repos {
 
 		public Task<QueryResult<DataModel>> Query(Func<IQueryable<DataModel>, IQueryable<DataModel>> query) {
 			return _repo.Query((string?)null, query);
+		}
+
+		// Example of an RU-intensive job pausing itself before it starts getting 429-throttled,
+		// instead of just retrying reactively after the fact.
+		public async Task ImportBatch(IEnumerable<DataModel> items) {
+			foreach (var item in items) {
+				await _repo.WaitForCapacity(pressureThreshold: 0.8);
+				await _repo.UpsertItem(item.PartitionKey, item);
+			}
 		}
 
 	}

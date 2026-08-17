@@ -30,6 +30,26 @@ namespace Corner49.Infra.DB {
 		/// </summary>
 		Func<DocumentDiagnostics, Task>? OnDiagnostics { get; set; }
 
+		/// <summary>
+		/// Gets a snapshot of client-observed RU/s usage and provisioned RU/s for this container, so
+		/// callers can decide whether to slow down before hitting 429 TooManyRequests. See the
+		/// per-process-visibility caveat on <see cref="ThroughputStats"/>.
+		/// </summary>
+		Task<ThroughputStats> GetThroughputStats();
+
+		/// <summary>
+		/// Waits until this container is no longer under RU pressure - i.e. the rolling-window pressure
+		/// ratio drops below <paramref name="pressureThreshold"/> and no 429s have been observed in the
+		/// window - or until <paramref name="maxWait"/> elapses (if set), whichever comes first. Intended
+		/// to be awaited between batches/items in an intensive processing job to avoid 429s without
+		/// raising provisioned throughput.
+		/// </summary>
+		/// <param name="pressureThreshold">Fraction (0-1) of provisioned RU/s above which the caller should wait. Default 0.8.</param>
+		/// <param name="pollInterval">How often to re-check while waiting. Default 500ms.</param>
+		/// <param name="maxWait">Maximum time to wait before giving up and returning anyway. Default: wait until cancelled.</param>
+		/// <param name="cancellationToken">Cancellation token.</param>
+		Task WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default);
+
 
 		/// <summary>
 		/// Checks if the container exists in the database.
@@ -131,12 +151,13 @@ namespace Corner49.Infra.DB {
 		/// <param name="paritionId">The partition key value (single partition key).</param>
 		/// <param name="item">The document to upsert.</param>
 		/// <param name="status">Optional callback to receive the HTTP status code (Created or OK).</param>
+		/// <param name="retryCount">Optional number of times to retry on failure.</param>
 		/// <returns>The upserted document.</returns>
 		/// <remarks>
 		/// More efficient than separate read + write operations.
 		/// Status code indicates whether item was created (201) or replaced (200).
 		/// </remarks>
-		Task<T> UpsertItem(string paritionId, T item, Action<HttpStatusCode>? status = null);
+		Task<T> UpsertItem(string paritionId, T item, Action<HttpStatusCode>? status = null, int retryCount = 3);
 
 		/// <summary>
 		/// Creates or replaces a document in a container with hierarchical partition keys.
@@ -144,8 +165,9 @@ namespace Corner49.Infra.DB {
 		/// <param name="paritionId">The hierarchical partition key values.</param>
 		/// <param name="item">The document to upsert.</param>
 		/// <param name="status">Optional callback to receive the HTTP status code.</param>
+		/// <param name="retryCount">Optional number of times to retry on failure.</param>
 		/// <returns>The upserted document.</returns>
-		Task<T> UpsertItem(string[] paritionId, T item, Action<HttpStatusCode>? status = null);
+		Task<T> UpsertItem(string[] paritionId, T item, Action<HttpStatusCode>? status = null, int retryCount = 3);
 
 		/// <summary>
 		/// Partially updates a document using patch operations.
@@ -483,7 +505,11 @@ namespace Corner49.Infra.DB {
 			if (_partitionKey == null || _partitionKey.Length == 0) {
 				_partitionKey = new string[] { "id" };
 			}
+
+			_throughput = new ThroughputTracker(this.ReadProvisionedThroughput);
 		}
+
+		private readonly ThroughputTracker _throughput;
 
 
 		private Database? _database;
@@ -514,6 +540,51 @@ namespace Corner49.Infra.DB {
 		/// which on a non-serverless account is a common root cause of 429 TooManyRequests errors.
 		/// </summary>
 		public int? ContainerAutoscaleThroughput { get; set; }
+
+		/// <summary>
+		/// Reads the container's actual provisioned RU/s, falling back to the database's RU/s if the
+		/// container uses database-shared throughput. Returns null if it can't be determined (e.g. a
+		/// serverless account, which has no fixed RU/s).
+		/// </summary>
+		private async Task<int?> ReadProvisionedThroughput() {
+			if (this.Container == null) return null;
+
+			try {
+				int? throughput = await this.Container.ReadThroughputAsync();
+				if (throughput != null) return throughput;
+			} catch (CosmosException) {
+				// likely database-shared throughput - fall back to the database below
+			} catch {
+				return null;
+			}
+
+			try {
+				return await _database!.ReadThroughputAsync();
+			} catch {
+				return null;
+			}
+		}
+
+		/// <inheritdoc />
+		public Task<ThroughputStats> GetThroughputStats() {
+			return _throughput.GetSnapshot();
+		}
+
+		/// <inheritdoc />
+		public async Task WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default) {
+			TimeSpan poll = pollInterval ?? TimeSpan.FromMilliseconds(500);
+			DateTime? deadline = maxWait.HasValue ? DateTime.UtcNow + maxWait.Value : null;
+
+			while (true) {
+				var stats = await _throughput.GetSnapshot();
+				bool underPressure = (stats.PressureRatio.HasValue && stats.PressureRatio.Value >= pressureThreshold) || stats.Throttled429Count > 0;
+				if (!underPressure) return;
+				if (deadline.HasValue && DateTime.UtcNow >= deadline.Value) return;
+
+				cancellationToken.ThrowIfCancellationRequested();
+				await Task.Delay(poll, cancellationToken);
+			}
+		}
 
 		Task IDocumentRepoInitializer.Init() {
 			return this.Init(DatabaseAutoscaleThroughput, ContainerAutoscaleThroughput);
@@ -572,6 +643,7 @@ namespace Corner49.Infra.DB {
 					return;
 				} catch (CosmosException err) {
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						_throughput.Record(null, throttled: true);
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else {
 						throw new DocumentException($"Init({_dbName},{_containerName}) failed", err);
@@ -658,6 +730,7 @@ namespace Corner49.Infra.DB {
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.ReadItemAsync<T>(itemId, pk);
+					_throughput.Record(resp.RequestCharge, throttled: false);
 					if (this.OnDiagnostics != null) {
 						try {
 							_ = this.OnDiagnostics(new DocumentDiagnostics {
@@ -683,6 +756,7 @@ namespace Corner49.Infra.DB {
 					if (err.StatusCode == System.Net.HttpStatusCode.NotFound) {
 						return null;
 					} else if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						_throughput.Record(null, throttled: true);
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
@@ -724,6 +798,7 @@ namespace Corner49.Infra.DB {
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.ReadItemStreamAsync(itemId, pk);
+					_throughput.Record(resp.Headers?.RequestCharge, throttled: false);
 					if (this.OnDiagnostics != null) {
 						try {
 							_ = this.OnDiagnostics(new DocumentDiagnostics {
@@ -747,6 +822,7 @@ namespace Corner49.Infra.DB {
 						return await JsonCosmosSerializer.Instance.FromStreamAsync<T>(resp.Content);
 					}
 					if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						_throughput.Record(null, throttled: true);
 						await Task.Delay(GetBackoffDelay(GetRetryAfter(resp), retry));
 					} else if (resp.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
 						await Task.Delay(GetBackoffDelay(GetRetryAfter(resp), retry));
@@ -758,6 +834,7 @@ namespace Corner49.Infra.DB {
 					if (err.StatusCode == System.Net.HttpStatusCode.NotFound) {
 						return null;
 					} else if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						_throughput.Record(null, throttled: true);
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
@@ -805,6 +882,7 @@ namespace Corner49.Infra.DB {
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.CreateItemAsync(item, pk);
+					_throughput.Record(resp.RequestCharge, throttled: false);
 					if (this.OnDiagnostics != null) {
 						try {
 							_ = this.OnDiagnostics(new DocumentDiagnostics {
@@ -828,6 +906,7 @@ namespace Corner49.Infra.DB {
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						_throughput.Record(null, throttled: true);
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
@@ -843,24 +922,25 @@ namespace Corner49.Infra.DB {
 		}
 
 		/// <inheritdoc />
-		public Task<T> UpsertItem(string paritionId, T item, Action<HttpStatusCode>? status = null) {
-			return this.UpsertItem(new PartitionKey(paritionId), item, status);
+		public Task<T> UpsertItem(string paritionId, T item, Action<HttpStatusCode>? status = null, int retryCount = 3) {
+			return this.UpsertItem(new PartitionKey(paritionId), item, status, retryCount);
 		}
 		/// <inheritdoc />
-		public Task<T> UpsertItem(string[] partitionId, T item, Action<HttpStatusCode>? status = null) {
+		public Task<T> UpsertItem(string[] partitionId, T item, Action<HttpStatusCode>? status = null, int retryCount = 3) {
 			PartitionKeyBuilder bld = new PartitionKeyBuilder();
 			foreach (var pk in partitionId) {
 				bld.Add(pk);
 			}
-			return this.UpsertItem(bld.Build(), item, status);
+			return this.UpsertItem(bld.Build(), item, status, retryCount);
 		}
-		private async Task<T> UpsertItem(PartitionKey pk, T item, Action<HttpStatusCode>? status = null) {
+		private async Task<T> UpsertItem(PartitionKey pk, T item, Action<HttpStatusCode>? status = null, int retryCount = 3) {
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
 			CosmosException? lastErr = null;
-			for (int retry = 0; retry <= 3; retry++) {
+			for (int retry = 0; retry <= retryCount; retry++) {
 				try {
 					var resp = await this.Container.UpsertItemAsync(item, pk);
+					_throughput.Record(resp.RequestCharge, throttled: false);
 					if (this.OnDiagnostics != null) {
 						try {
 							_ = this.OnDiagnostics(new DocumentDiagnostics {
@@ -885,6 +965,7 @@ namespace Corner49.Infra.DB {
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						_throughput.Record(null, throttled: true);
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
@@ -917,6 +998,7 @@ namespace Corner49.Infra.DB {
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.PatchItemAsync<T>(itemId, pk, patches);
+					_throughput.Record(resp.RequestCharge, throttled: false);
 					if (this.OnDiagnostics != null) {
 						try {
 							_ = this.OnDiagnostics(new DocumentDiagnostics {
@@ -940,6 +1022,7 @@ namespace Corner49.Infra.DB {
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						_throughput.Record(null, throttled: true);
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
@@ -974,6 +1057,7 @@ namespace Corner49.Infra.DB {
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
 					var resp = await this.Container.DeleteItemAsync<T>(itemId, pk);
+					_throughput.Record(resp.RequestCharge, throttled: false);
 					if (this.OnDiagnostics != null) {
 						try {
 							_ = this.OnDiagnostics(new DocumentDiagnostics {
@@ -997,6 +1081,7 @@ namespace Corner49.Infra.DB {
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+						_throughput.Record(null, throttled: true);
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
@@ -1052,7 +1137,8 @@ namespace Corner49.Infra.DB {
 			string? token = null;
 			using (FeedIterator<T> FeedIterator = qry.ToFeedIterator()) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					var feed = await ReadNextWithRetry(FeedIterator, nameof(Read), cancelToken);
+					var feed = await ReadNextWithRetry(FeedIterator, nameof(Read), cancelToken, _throughput);
+					_throughput.Record(feed.RequestCharge, throttled: false);
 
 					if (this.OnDiagnostics != null) {
 						try {
@@ -1116,7 +1202,8 @@ namespace Corner49.Infra.DB {
 			}
 			using (FeedIterator<T> FeedIterator = qry.ToFeedIterator()) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					var feed = await ReadNextWithRetry(FeedIterator, nameof(Query), cancelToken);
+					var feed = await ReadNextWithRetry(FeedIterator, nameof(Query), cancelToken, _throughput);
+					_throughput.Record(feed.RequestCharge, throttled: false);
 					foreach (var item in feed) {
 						result.Data.Add(item);
 					}
@@ -1168,7 +1255,8 @@ namespace Corner49.Infra.DB {
 
 			using (FeedIterator<T> FeedIterator = this.Container.GetItemQueryIterator<T>(def, token, queryOptions)) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					var feed = await ReadNextWithRetry(FeedIterator, nameof(Query), cancelToken);
+					var feed = await ReadNextWithRetry(FeedIterator, nameof(Query), cancelToken, _throughput);
+					_throughput.Record(feed.RequestCharge, throttled: false);
 
 					if (this.OnDiagnostics != null) {
 						try {
@@ -1233,7 +1321,8 @@ namespace Corner49.Infra.DB {
 
 				using (FeedIterator<T> FeedIterator = qry.ToFeedIterator()) {
 					while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-						var feed = await ReadNextWithRetry(FeedIterator, nameof(Read), cancelToken);
+						var feed = await ReadNextWithRetry(FeedIterator, nameof(Read), cancelToken, _throughput);
+						_throughput.Record(feed.RequestCharge, throttled: false);
 						foreach (var item in feed) {
 							if (!await onRead(item, count)) return;
 						}
@@ -1248,7 +1337,9 @@ namespace Corner49.Infra.DB {
 			using (FeedIterator<T> FeedIterator = qry.ToFeedIterator()) {
 
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					foreach (var item in await ReadNextWithRetry(FeedIterator, nameof(GetQueryResults), cancelToken)) {
+					var feed = await ReadNextWithRetry(FeedIterator, nameof(GetQueryResults), cancelToken, _throughput);
+					_throughput.Record(feed.RequestCharge, throttled: false);
+					foreach (var item in feed) {
 						yield return item;
 					}
 				}
@@ -1285,7 +1376,8 @@ namespace Corner49.Infra.DB {
 
 			using (FeedIterator<M> feedIterator = this.Container.GetItemQueryIterator<M>(def, null, options)) {
 				while (feedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					FeedResponse<M> feed = await ReadNextWithRetry(feedIterator, nameof(ExecSQL), cancelToken);
+					FeedResponse<M> feed = await ReadNextWithRetry(feedIterator, nameof(ExecSQL), cancelToken, _throughput);
+					_throughput.Record(feed.RequestCharge, throttled: false);
 
 					if (this.OnDiagnostics != null) {
 						try {
@@ -1342,7 +1434,8 @@ namespace Corner49.Infra.DB {
 			int cnt = 0;
 			using (FeedIterator<T> FeedIterator = this.Container.GetItemQueryIterator<T>(def, token, options)) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested && run) {
-					var feed = await ReadNextWithRetry(FeedIterator, nameof(ReadSQL), cancelToken);
+					var feed = await ReadNextWithRetry(FeedIterator, nameof(ReadSQL), cancelToken, _throughput);
+					_throughput.Record(feed.RequestCharge, throttled: false);
 
 					if (this.OnDiagnostics != null) {
 						try {
@@ -1403,7 +1496,8 @@ namespace Corner49.Infra.DB {
 			try {
 				using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(sql, null, options)) {
 					while (feed.HasMoreResults) {
-						FeedResponse<object> response = await ReadNextWithRetry(feed, nameof(CountSQL), cancelToken);
+						FeedResponse<object> response = await ReadNextWithRetry(feed, nameof(CountSQL), cancelToken, _throughput);
+						_throughput.Record(response.RequestCharge, throttled: false);
 
 						if (this.OnDiagnostics != null) {
 							try {
@@ -1479,7 +1573,8 @@ namespace Corner49.Infra.DB {
 
 			using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(def, null, options)) {
 				while (feed.HasMoreResults) {
-					FeedResponse<object> response = await ReadNextWithRetry(feed, nameof(RawSQL), cancelToken);
+					FeedResponse<object> response = await ReadNextWithRetry(feed, nameof(RawSQL), cancelToken, _throughput);
+					_throughput.Record(response.RequestCharge, throttled: false);
 
 
 					try {
@@ -1528,11 +1623,15 @@ namespace Corner49.Infra.DB {
 		/// </summary>
 		public int BulkMaxConcurrency { get; set; } = 100;
 
-		private async Task RunBulkItem(SemaphoreSlim throttle, T itm, Func<Task> operation, CancellationToken cancellationToken) {
+		private async Task RunBulkItem(SemaphoreSlim throttle, T itm, Func<Task<ItemResponse<T>>> operation, CancellationToken cancellationToken) {
 			await throttle.WaitAsync(cancellationToken);
 			try {
-				await operation();
+				var resp = await operation();
+				_throughput.Record(resp.RequestCharge, throttled: false);
 			} catch (Exception ex) {
+				if (ex is CosmosException cosmosEx && cosmosEx.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
+					_throughput.Record(null, throttled: true);
+				}
 				if (this.OnBulkError != null) {
 					try {
 						await this.OnBulkError(itm, ex);
@@ -1632,7 +1731,7 @@ namespace Corner49.Infra.DB {
 		/// share the same 429 resilience and DocumentException error contract as the rest of the repo instead
 		/// of leaking a raw CosmosException once the SDK's own retry budget is exhausted.
 		/// </summary>
-		private static async Task<FeedResponse<TFeed>> ReadNextWithRetry<TFeed>(FeedIterator<TFeed> iterator, string operation, CancellationToken cancelToken) {
+		private static async Task<FeedResponse<TFeed>> ReadNextWithRetry<TFeed>(FeedIterator<TFeed> iterator, string operation, CancellationToken cancelToken, ThroughputTracker? throughput = null) {
 			CosmosException? lastErr = null;
 			for (int retry = 0; retry <= 3; retry++) {
 				try {
@@ -1640,6 +1739,7 @@ namespace Corner49.Infra.DB {
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests || err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
+						throughput?.Record(null, throttled: err.StatusCode == System.Net.HttpStatusCode.TooManyRequests);
 						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else {
 						throw new DocumentException($"{operation} failed", err, err.StatusCode);
