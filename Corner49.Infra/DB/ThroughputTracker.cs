@@ -1,4 +1,5 @@
 using Microsoft.Azure.Cosmos;
+using OpenTelemetry.Trace;
 
 namespace Corner49.Infra.DB {
 
@@ -35,6 +36,11 @@ namespace Corner49.Infra.DB {
 
 		/// <summary>Duration of the rolling window these stats were computed over.</summary>
 		public TimeSpan Window { get; set; }
+
+
+		public bool IsUnderPressure(double threshold = 0.8) {
+			return (this.PressureRatio.HasValue && this.PressureRatio.Value >= threshold) || this.Throttled429Count > 0;
+		}
 
 	}
 

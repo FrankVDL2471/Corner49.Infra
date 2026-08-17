@@ -577,7 +577,7 @@ namespace Corner49.Infra.DB {
 
 			while (true) {
 				var stats = await _throughput.GetSnapshot();
-				bool underPressure = (stats.PressureRatio.HasValue && stats.PressureRatio.Value >= pressureThreshold) || stats.Throttled429Count > 0;
+				bool underPressure = stats.IsUnderPressure(pressureThreshold);
 				if (!underPressure) return;
 				if (deadline.HasValue && DateTime.UtcNow >= deadline.Value) return;
 
