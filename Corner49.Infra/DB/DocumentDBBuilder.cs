@@ -10,6 +10,20 @@ namespace Corner49.Infra.DB {
 		/// </summary>
 		public string? DatabaseName { get; set; }
 		public string? ContainerName { get; set; }
+
+		/// <summary>
+		/// Autoscale max RU/s to provision on the database if Init() creates it. Null (default) creates the
+		/// database with no explicit throughput. Apply via the repo's <c>DatabaseAutoscaleThroughput</c> property.
+		/// </summary>
+		public int? DatabaseAutoscaleThroughput { get; set; }
+
+		/// <summary>
+		/// Autoscale max RU/s to provision on the container if Init() creates it. Null (default) creates the
+		/// container with no explicit throughput - on a non-serverless account this can leave the container
+		/// with no RU/s budget, a common root cause of 429 TooManyRequests errors. Apply via the repo's
+		/// <c>ContainerAutoscaleThroughput</c> property.
+		/// </summary>
+		public int? ContainerAutoscaleThroughput { get; set; }
 	}
 	public class DocumentDBBuilder {
 

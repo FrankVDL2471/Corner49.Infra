@@ -500,8 +500,23 @@ namespace Corner49.Infra.DB {
 			}
 		}
 
+		/// <summary>
+		/// Autoscale max RU/s to provision on the database if Init() creates it. Set this (e.g. from
+		/// <see cref="DocumentRepoOptions.DatabaseAutoscaleThroughput"/> in the owning repo's constructor)
+		/// before Init() runs at startup. Null (default) creates the database with no explicit throughput.
+		/// </summary>
+		public int? DatabaseAutoscaleThroughput { get; set; }
+
+		/// <summary>
+		/// Autoscale max RU/s to provision on the container if Init() creates it. Set this (e.g. from
+		/// <see cref="DocumentRepoOptions.ContainerAutoscaleThroughput"/> in the owning repo's constructor)
+		/// before Init() runs at startup. Null (default) creates the container with no explicit throughput,
+		/// which on a non-serverless account is a common root cause of 429 TooManyRequests errors.
+		/// </summary>
+		public int? ContainerAutoscaleThroughput { get; set; }
+
 		Task IDocumentRepoInitializer.Init() {
-			return this.Init(null, null);
+			return this.Init(DatabaseAutoscaleThroughput, ContainerAutoscaleThroughput);
 		}
 
 		private bool? _exists = null;
@@ -557,7 +572,7 @@ namespace Corner49.Infra.DB {
 					return;
 				} catch (CosmosException err) {
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(10));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else {
 						throw new DocumentException($"Init({_dbName},{_containerName}) failed", err);
 					}
@@ -655,7 +670,7 @@ namespace Corner49.Infra.DB {
 								StatusCode = resp.StatusCode,
 								StartTime = resp.Diagnostics?.GetStartTimeUtc(),
 								ElapsedTime = resp.Diagnostics?.GetClientElapsedTime(),
-								TotalRequestCharge = resp.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+								TotalRequestCharge = resp.RequestCharge
 							});
 						} catch {
 						}
@@ -668,9 +683,9 @@ namespace Corner49.Infra.DB {
 					if (err.StatusCode == System.Net.HttpStatusCode.NotFound) {
 						return null;
 					} else if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else {
 						throw new DocumentException($"GetItem({pk},{itemId}) failed", err, err.StatusCode);
 					}
@@ -678,7 +693,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"GetItem({pk},{itemId}) failed", ex);
 				}
 			}
-			throw new DocumentException($"GetItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}");
+			throw new DocumentException($"GetItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}", lastErr, lastErr?.StatusCode);
 		}
 
 
@@ -721,7 +736,7 @@ namespace Corner49.Infra.DB {
 								StatusCode = resp.StatusCode,
 								StartTime = resp.Diagnostics?.GetStartTimeUtc(),
 								ElapsedTime = resp.Diagnostics?.GetClientElapsedTime(),
-								TotalRequestCharge = resp.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+								TotalRequestCharge = resp.Headers?.RequestCharge
 							});
 						} catch {
 						}
@@ -732,9 +747,9 @@ namespace Corner49.Infra.DB {
 						return await JsonCosmosSerializer.Instance.FromStreamAsync<T>(resp.Content);
 					}
 					if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
-						await Task.Delay(TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(GetRetryAfter(resp), retry));
 					} else if (resp.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
-						await Task.Delay(TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(GetRetryAfter(resp), retry));
 					} else {
 						throw new DocumentException($"ReadItem({pk},{itemId}) failed", new Exception(resp.ErrorMessage), resp.StatusCode);
 					}
@@ -743,9 +758,9 @@ namespace Corner49.Infra.DB {
 					if (err.StatusCode == System.Net.HttpStatusCode.NotFound) {
 						return null;
 					} else if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else {
 						throw new DocumentException($"ReadItem({pk},{itemId}) failed", err, err.StatusCode);
 					}
@@ -753,7 +768,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"ReadItem({pk},{itemId}) failed", ex);
 				}
 			}
-			throw new DocumentException($"ReadItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}");
+			throw new DocumentException($"ReadItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}", lastErr, lastErr?.StatusCode);
 		}
 
 
@@ -802,7 +817,7 @@ namespace Corner49.Infra.DB {
 								StatusCode = resp.StatusCode,
 								StartTime = resp.Diagnostics.GetStartTimeUtc(),
 								ElapsedTime = resp.Diagnostics.GetClientElapsedTime(),
-								TotalRequestCharge = resp.Diagnostics.GetQueryMetrics().TotalRequestCharge
+								TotalRequestCharge = resp.RequestCharge
 							});
 						} catch {
 						}
@@ -813,9 +828,9 @@ namespace Corner49.Infra.DB {
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else {
 						throw new DocumentException($"AddItem failed", err, err.StatusCode);
 					}
@@ -823,7 +838,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"AddItem failed", ex);
 				}
 			}
-			throw new DocumentException($"AddItem failed : {lastErr?.StatusCode} - {lastErr?.Message}");
+			throw new DocumentException($"AddItem failed : {lastErr?.StatusCode} - {lastErr?.Message}", lastErr, lastErr?.StatusCode);
 
 		}
 
@@ -858,7 +873,7 @@ namespace Corner49.Infra.DB {
 								StatusCode = resp.StatusCode,
 								StartTime = resp.Diagnostics?.GetStartTimeUtc(),
 								ElapsedTime = resp.Diagnostics?.GetClientElapsedTime(),
-								TotalRequestCharge = resp.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+								TotalRequestCharge = resp.RequestCharge
 							});
 						} catch {
 						}
@@ -870,9 +885,9 @@ namespace Corner49.Infra.DB {
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else {
 						throw new DocumentException($"UpsertItem failed", err, err.StatusCode);
 					}
@@ -880,7 +895,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"UpsertItem failed", err);
 				}
 			}
-			throw new DocumentException($"UpsertItem failed : {lastErr?.StatusCode} - {lastErr?.Message}");
+			throw new DocumentException($"UpsertItem failed : {lastErr?.StatusCode} - {lastErr?.Message}", lastErr, lastErr?.StatusCode);
 		}
 
 		/// <inheritdoc />
@@ -915,7 +930,7 @@ namespace Corner49.Infra.DB {
 								StatusCode = resp.StatusCode,
 								StartTime = resp.Diagnostics?.GetStartTimeUtc(),
 								ElapsedTime = resp.Diagnostics?.GetClientElapsedTime(),
-								TotalRequestCharge = resp.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+								TotalRequestCharge = resp.RequestCharge
 							});
 						} catch { }
 					}
@@ -925,9 +940,9 @@ namespace Corner49.Infra.DB {
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else {
 						throw new DocumentException($"PatchItem({pk},{itemId}) failed", err, err.StatusCode);
 					}
@@ -935,7 +950,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"PatchItem({pk},{itemId}) failed", err);
 				}
 			}
-			throw new DocumentException($"PatchItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}");			
+			throw new DocumentException($"PatchItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}", lastErr, lastErr?.StatusCode);
 		}
 
 		/// <inheritdoc />
@@ -971,7 +986,7 @@ namespace Corner49.Infra.DB {
 								StatusCode = resp.StatusCode,
 								StartTime = resp.Diagnostics?.GetStartTimeUtc(),
 								ElapsedTime = resp.Diagnostics?.GetClientElapsedTime(),
-								TotalRequestCharge = resp.Diagnostics?.GetQueryMetrics().TotalRequestCharge
+								TotalRequestCharge = resp.RequestCharge
 							});
 						} catch { }
 					}
@@ -982,9 +997,9 @@ namespace Corner49.Infra.DB {
 				} catch (CosmosException err) {
 					lastErr = err;
 					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
-						await Task.Delay(err.RetryAfter ?? TimeSpan.FromSeconds(5));
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
 					} else if (err.StatusCode == System.Net.HttpStatusCode.NotFound) {
 						return false;
 					} else {
@@ -994,7 +1009,7 @@ namespace Corner49.Infra.DB {
 					throw new DocumentException($"DeleteItem({pk},{itemId}) failed", err);
 				}
 			}
-			throw new DocumentException($"DeleteItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}");
+			throw new DocumentException($"DeleteItem({pk},{itemId}) failed : {lastErr?.StatusCode} - {lastErr?.Message}", lastErr, lastErr?.StatusCode);
 
 
 		}
@@ -1037,7 +1052,7 @@ namespace Corner49.Infra.DB {
 			string? token = null;
 			using (FeedIterator<T> FeedIterator = qry.ToFeedIterator()) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					var feed = await FeedIterator.ReadNextAsync(cancelToken);
+					var feed = await ReadNextWithRetry(FeedIterator, nameof(Read), cancelToken);
 
 					if (this.OnDiagnostics != null) {
 						try {
@@ -1051,7 +1066,7 @@ namespace Corner49.Infra.DB {
 								StatusCode = feed.StatusCode,
 								StartTime = feed.Diagnostics?.GetStartTimeUtc(),
 								ElapsedTime = feed.Diagnostics?.GetClientElapsedTime(),
-								TotalRequestCharge = feed.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+								TotalRequestCharge = feed.RequestCharge
 							});
 						} catch { }
 					}
@@ -1101,7 +1116,7 @@ namespace Corner49.Infra.DB {
 			}
 			using (FeedIterator<T> FeedIterator = qry.ToFeedIterator()) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					var feed = await FeedIterator.ReadNextAsync(cancelToken);
+					var feed = await ReadNextWithRetry(FeedIterator, nameof(Query), cancelToken);
 					foreach (var item in feed) {
 						result.Data.Add(item);
 					}
@@ -1153,7 +1168,7 @@ namespace Corner49.Infra.DB {
 
 			using (FeedIterator<T> FeedIterator = this.Container.GetItemQueryIterator<T>(def, token, queryOptions)) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					var feed = await FeedIterator.ReadNextAsync(cancelToken);
+					var feed = await ReadNextWithRetry(FeedIterator, nameof(Query), cancelToken);
 
 					if (this.OnDiagnostics != null) {
 						try {
@@ -1168,7 +1183,7 @@ namespace Corner49.Infra.DB {
 								StatusCode = feed.StatusCode,
 								StartTime = feed.Diagnostics?.GetStartTimeUtc(),
 								ElapsedTime = feed.Diagnostics?.GetClientElapsedTime(),
-								TotalRequestCharge = feed.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+								TotalRequestCharge = feed.RequestCharge
 							});
 						} catch { }
 					}
@@ -1218,7 +1233,7 @@ namespace Corner49.Infra.DB {
 
 				using (FeedIterator<T> FeedIterator = qry.ToFeedIterator()) {
 					while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-						var feed = await FeedIterator.ReadNextAsync(cancelToken);
+						var feed = await ReadNextWithRetry(FeedIterator, nameof(Read), cancelToken);
 						foreach (var item in feed) {
 							if (!await onRead(item, count)) return;
 						}
@@ -1233,7 +1248,7 @@ namespace Corner49.Infra.DB {
 			using (FeedIterator<T> FeedIterator = qry.ToFeedIterator()) {
 
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					foreach (var item in await FeedIterator.ReadNextAsync(cancelToken)) {
+					foreach (var item in await ReadNextWithRetry(FeedIterator, nameof(GetQueryResults), cancelToken)) {
 						yield return item;
 					}
 				}
@@ -1270,7 +1285,7 @@ namespace Corner49.Infra.DB {
 
 			using (FeedIterator<M> feedIterator = this.Container.GetItemQueryIterator<M>(def, null, options)) {
 				while (feedIterator.HasMoreResults && !cancelToken.IsCancellationRequested) {
-					FeedResponse<M> feed = await feedIterator.ReadNextAsync(cancelToken);
+					FeedResponse<M> feed = await ReadNextWithRetry(feedIterator, nameof(ExecSQL), cancelToken);
 
 					if (this.OnDiagnostics != null) {
 						try {
@@ -1286,34 +1301,9 @@ namespace Corner49.Infra.DB {
 								StatusCode = feed.StatusCode,
 								StartTime = feed.Diagnostics?.GetStartTimeUtc(),
 								ElapsedTime = feed.Diagnostics?.GetClientElapsedTime(),
-								TotalRequestCharge = feed.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+								TotalRequestCharge = feed.RequestCharge
 							});
 						} catch { }
-					}
-
-
-
-					while (feed.StatusCode == HttpStatusCode.TooManyRequests) {
-						await Task.Delay(TimeSpan.FromSeconds(5));
-						feed = await feedIterator.ReadNextAsync(cancelToken);
-
-						if (this.OnDiagnostics != null) {
-							_ = this.OnDiagnostics(new DocumentDiagnostics {
-								Repo = this.GetType().Name,
-								Method = nameof(ExecSQL),
-								Parameters = new Dictionary<string, object?>() {
-									{ "partitionKey", partitionKey?.ToString()  },
-									{ "sql", sql },
-									{  "maxItemCount", maxItemCount  },
-									{ "parameters", parameters }
-								},
-								StatusCode = feed.StatusCode,
-								StartTime = feed.Diagnostics.GetStartTimeUtc(),
-								ElapsedTime = feed.Diagnostics.GetClientElapsedTime(),
-								TotalRequestCharge = feed.Diagnostics.GetQueryMetrics().TotalRequestCharge
-							});
-						}
-
 					}
 
 					foreach (var item in feed) {
@@ -1352,7 +1342,7 @@ namespace Corner49.Infra.DB {
 			int cnt = 0;
 			using (FeedIterator<T> FeedIterator = this.Container.GetItemQueryIterator<T>(def, token, options)) {
 				while (FeedIterator.HasMoreResults && !cancelToken.IsCancellationRequested && run) {
-					var feed = await FeedIterator.ReadNextAsync(cancelToken);
+					var feed = await ReadNextWithRetry(FeedIterator, nameof(ReadSQL), cancelToken);
 
 					if (this.OnDiagnostics != null) {
 						try {
@@ -1369,7 +1359,7 @@ namespace Corner49.Infra.DB {
 								StatusCode = feed.StatusCode,
 								StartTime = feed.Diagnostics?.GetStartTimeUtc(),
 								ElapsedTime = feed.Diagnostics?.GetClientElapsedTime(),
-								TotalRequestCharge = feed.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+								TotalRequestCharge = feed.RequestCharge
 							});
 						} catch { }
 					}
@@ -1413,7 +1403,7 @@ namespace Corner49.Infra.DB {
 			try {
 				using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(sql, null, options)) {
 					while (feed.HasMoreResults) {
-						FeedResponse<object> response = await feed.ReadNextAsync(cancelToken);
+						FeedResponse<object> response = await ReadNextWithRetry(feed, nameof(CountSQL), cancelToken);
 
 						if (this.OnDiagnostics != null) {
 							try {
@@ -1426,7 +1416,7 @@ namespace Corner49.Infra.DB {
 									StatusCode = response.StatusCode,
 									StartTime = response.Diagnostics?.GetStartTimeUtc(),
 									ElapsedTime = response.Diagnostics?.GetClientElapsedTime(),
-									TotalRequestCharge = response.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+									TotalRequestCharge = response.RequestCharge
 								});
 							} catch { }
 						}
@@ -1441,6 +1431,23 @@ namespace Corner49.Infra.DB {
 					}
 				}
 			} catch (Exception err) {
+				// CountSQL runs on every first page of Query(pk, sql, ...) - a swallowed 429/error here would
+				// otherwise be completely invisible (no OnDiagnostics, no log), masking sustained throttling.
+				CosmosException? cosmosErr = err as CosmosException ?? (err as DocumentException)?.InnerException as CosmosException;
+				if (this.OnDiagnostics != null) {
+					try {
+						_ = this.OnDiagnostics(new DocumentDiagnostics {
+							Repo = this.GetType().Name,
+							Method = nameof(CountSQL),
+							Parameters = new Dictionary<string, object?>() {
+								{ "where", where },
+								{ "error", err.Message },
+								{ "diagnostics", cosmosErr?.Diagnostics?.ToString() }
+							},
+							StatusCode = cosmosErr?.StatusCode ?? (err as DocumentException)?.StatusCode
+						});
+					} catch { }
+				}
 			}
 			return -1;
 		}
@@ -1472,7 +1479,7 @@ namespace Corner49.Infra.DB {
 
 			using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(def, null, options)) {
 				while (feed.HasMoreResults) {
-					FeedResponse<object> response = await feed.ReadNextAsync(cancelToken);
+					FeedResponse<object> response = await ReadNextWithRetry(feed, nameof(RawSQL), cancelToken);
 
 
 					try {
@@ -1488,7 +1495,7 @@ namespace Corner49.Infra.DB {
 								StatusCode = response.StatusCode,
 								StartTime = response.Diagnostics?.GetStartTimeUtc(),
 								ElapsedTime = response.Diagnostics?.GetClientElapsedTime(),
-								TotalRequestCharge = response.Diagnostics?.GetQueryMetrics()?.TotalRequestCharge
+								TotalRequestCharge = response.RequestCharge
 							});
 						}
 					} catch {
@@ -1507,6 +1514,36 @@ namespace Corner49.Infra.DB {
 		}
 
 		/// <summary>
+		/// Optional callback invoked when a BulkInsert/BulkUpdate/BulkDelete item fails (including 429s).
+		/// Replaces the previous behavior of only Console.WriteLine-ing failures, which was invisible in
+		/// production logging pipelines and gave callers no way to count/react to failed items.
+		/// </summary>
+		public Func<T, Exception, Task>? OnBulkError { get; set; }
+
+		/// <summary>
+		/// Maximum number of concurrent bulk item operations in flight at once. AllowBulkExecution on the
+		/// CosmosClient improves pipelining efficiency but does not by itself cap RU usage - without a bound
+		/// here, a large source enumerable can consume the container's entire throughput budget and starve
+		/// other traffic sharing it.
+		/// </summary>
+		public int BulkMaxConcurrency { get; set; } = 100;
+
+		private async Task RunBulkItem(SemaphoreSlim throttle, T itm, Func<Task> operation, CancellationToken cancellationToken) {
+			await throttle.WaitAsync(cancellationToken);
+			try {
+				await operation();
+			} catch (Exception ex) {
+				if (this.OnBulkError != null) {
+					try {
+						await this.OnBulkError(itm, ex);
+					} catch { }
+				}
+			} finally {
+				throttle.Release();
+			}
+		}
+
+		/// <summary>
 		/// Performs bulk insert of items with automatic partition key extraction.
 		/// </summary>
 		/// <param name="items">Items to insert.</param>
@@ -1515,24 +1552,12 @@ namespace Corner49.Infra.DB {
 		public async Task BulkInsert(IAsyncEnumerable<T> items, Func<T, string> getPartitionKey, CancellationToken cancellationToken = default) {
 			var container = this.Container;
 
+			using SemaphoreSlim throttle = new SemaphoreSlim(this.BulkMaxConcurrency);
 			List<Task> tasks = new List<Task>();
 			await foreach (var itm in items) {
 				if (cancellationToken.IsCancellationRequested) break;
 
-				try {
-					tasks.Add(container.CreateItemAsync(itm, new PartitionKey(getPartitionKey(itm)), null, cancellationToken)
-							.ContinueWith(itemResponse => {
-								if (!itemResponse.IsCompletedSuccessfully) {
-									AggregateException innerExceptions = itemResponse.Exception.Flatten();
-									if (innerExceptions.InnerExceptions.FirstOrDefault(innerEx => innerEx is CosmosException) is CosmosException cosmosException) {
-										Console.WriteLine($"Received {cosmosException.StatusCode} ({cosmosException.Message}).");
-									} else {
-										Console.WriteLine($"Exception {innerExceptions.InnerExceptions.FirstOrDefault()}.");
-									}
-								}
-							}));
-				} catch (Exception ex) {
-				}
+				tasks.Add(RunBulkItem(throttle, itm, () => container.CreateItemAsync(itm, new PartitionKey(getPartitionKey(itm)), null, cancellationToken), cancellationToken));
 			}
 
 			await Task.WhenAll(tasks);
@@ -1541,25 +1566,12 @@ namespace Corner49.Infra.DB {
 		public async Task BulkDelete(IAsyncEnumerable<T> items, Func<T, string> getId, Func<T, string> getPartitionKey, CancellationToken cancellationToken = default) {
 			var container = this.Container;
 
+			using SemaphoreSlim throttle = new SemaphoreSlim(this.BulkMaxConcurrency);
 			List<Task> tasks = new List<Task>();
 			await foreach (var itm in items) {
 				if (cancellationToken.IsCancellationRequested) break;
 
-				try {
-					tasks.Add(container.DeleteItemAsync<T>(getId(itm), new PartitionKey(getPartitionKey(itm)), null, cancellationToken)
-							.ContinueWith(itemResponse => {
-								if (!itemResponse.IsCompletedSuccessfully) {
-									AggregateException innerExceptions = itemResponse.Exception.Flatten();
-									if (innerExceptions.InnerExceptions.FirstOrDefault(innerEx => innerEx is CosmosException) is CosmosException cosmosException) {
-										Console.WriteLine($"Received {cosmosException.StatusCode} ({cosmosException.Message}).");
-									} else {
-										Console.WriteLine($"Exception {innerExceptions.InnerExceptions.FirstOrDefault()}.");
-									}
-								}
-							}));
-				} catch (Exception err) {
-
-				}
+				tasks.Add(RunBulkItem(throttle, itm, () => container.DeleteItemAsync<T>(getId(itm), new PartitionKey(getPartitionKey(itm)), null, cancellationToken), cancellationToken));
 			}
 
 			await Task.WhenAll(tasks);
@@ -1568,26 +1580,13 @@ namespace Corner49.Infra.DB {
 		public async Task BulkUpdate(IAsyncEnumerable<T> items, Func<T, string> getId, Func<T, string> getPartitionKey, Func<T, T>? update = null, CancellationToken cancellationToken = default) {
 			var container = this.Container;
 
+			using SemaphoreSlim throttle = new SemaphoreSlim(this.BulkMaxConcurrency);
 			List<Task> tasks = new List<Task>();
 			await foreach (var itm in items) {
 				if (cancellationToken.IsCancellationRequested) break;
 
-				try {
-					T item = update == null ? itm : update(itm);
-
-					tasks.Add(container.ReplaceItemAsync(item, getId(itm), new PartitionKey(getPartitionKey(itm)), null, cancellationToken)
-							.ContinueWith(itemResponse => {
-								if (!itemResponse.IsCompletedSuccessfully) {
-									AggregateException innerExceptions = itemResponse.Exception.Flatten();
-									if (innerExceptions.InnerExceptions.FirstOrDefault(innerEx => innerEx is CosmosException) is CosmosException cosmosException) {
-										Console.WriteLine($"Received {cosmosException.StatusCode} ({cosmosException.Message}).");
-									} else {
-										Console.WriteLine($"Exception {innerExceptions.InnerExceptions.FirstOrDefault()}.");
-									}
-								}
-							}));
-				} catch (Exception err) {
-				}
+				T item = update == null ? itm : update(itm);
+				tasks.Add(RunBulkItem(throttle, itm, () => container.ReplaceItemAsync(item, getId(itm), new PartitionKey(getPartitionKey(itm)), null, cancellationToken), cancellationToken));
 			}
 
 			await Task.WhenAll(tasks);
@@ -1602,6 +1601,52 @@ namespace Corner49.Infra.DB {
 				bld.Add(pk);
 			}
 			return bld.Build();
+		}
+
+		/// <summary>
+		/// Adds jitter (and, when the server gives no explicit retry-after, exponential growth per attempt)
+		/// to a retry delay. Without this, every caller throttled on the same partition/container - e.g.
+		/// concurrent app instances - retries after the same flat/server-suggested interval in near lockstep,
+		/// which re-triggers the same 429 storm together instead of letting it dissipate.
+		/// </summary>
+		private static TimeSpan GetBackoffDelay(TimeSpan? retryAfter, int attempt) {
+			TimeSpan baseDelay = retryAfter ?? TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, attempt + 1)));
+			double jitterMs = Random.Shared.NextDouble() * baseDelay.TotalMilliseconds * 0.5;
+			return baseDelay + TimeSpan.FromMilliseconds(jitterMs);
+		}
+
+		/// <summary>
+		/// Reads the server-suggested retry delay (x-ms-retry-after-ms) off a stream-API ResponseMessage.
+		/// ResponseMessage/Headers has no typed RetryAfter property (unlike CosmosException.RetryAfter).
+		/// </summary>
+		private static TimeSpan GetRetryAfter(ResponseMessage resp) {
+			if (resp.Headers != null && resp.Headers.TryGetValue("x-ms-retry-after-ms", out string? val) && int.TryParse(val, out int ms)) {
+				return TimeSpan.FromMilliseconds(ms);
+			}
+			return TimeSpan.FromSeconds(5);
+		}
+
+		/// <summary>
+		/// Reads the next page from a FeedIterator, retrying on 429/408 the same way the point-read/write
+		/// operations do (bounded attempts, honoring the server's RetryAfter), so query/streaming methods
+		/// share the same 429 resilience and DocumentException error contract as the rest of the repo instead
+		/// of leaking a raw CosmosException once the SDK's own retry budget is exhausted.
+		/// </summary>
+		private static async Task<FeedResponse<TFeed>> ReadNextWithRetry<TFeed>(FeedIterator<TFeed> iterator, string operation, CancellationToken cancelToken) {
+			CosmosException? lastErr = null;
+			for (int retry = 0; retry <= 3; retry++) {
+				try {
+					return await iterator.ReadNextAsync(cancelToken);
+				} catch (CosmosException err) {
+					lastErr = err;
+					if (err.StatusCode == System.Net.HttpStatusCode.TooManyRequests || err.StatusCode == System.Net.HttpStatusCode.RequestTimeout) {
+						await Task.Delay(GetBackoffDelay(err.RetryAfter, retry));
+					} else {
+						throw new DocumentException($"{operation} failed", err, err.StatusCode);
+					}
+				}
+			}
+			throw new DocumentException($"{operation} failed : {lastErr?.StatusCode} - {lastErr?.Message}", lastErr, lastErr?.StatusCode);
 		}
 
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member

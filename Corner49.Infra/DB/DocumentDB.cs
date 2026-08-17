@@ -52,6 +52,15 @@ namespace Corner49.Infra.DB {
 				}
 				options.AllowBulkExecution = true;
 
+				// DocumentRepo<T> already runs its own bounded, RetryAfter-aware retry loop on 429/408 for
+				// every operation (surfacing attempts via OnDiagnostics), so the SDK's own retry budget is
+				// kept small rather than left at its default (9 attempts / 30s) to avoid two uncoordinated
+				// retry layers stacking into very long worst-case latency under sustained throttling.
+				// This still leaves a small safety net for code paths that don't have their own retry loop
+				// (e.g. BulkInsert/BulkUpdate/BulkDelete).
+				options.MaxRetryAttemptsOnRateLimitedRequests = 3;
+				options.MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(15);
+
 				return new CosmosClient(_options.ConnectString, options);
 			});
 		}
