@@ -2,6 +2,7 @@
 using Corner49.Infra.Tools;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
+using System.Diagnostics;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -48,7 +49,7 @@ namespace Corner49.Infra.DB {
 		/// <param name="pollInterval">How often to re-check while waiting. Default 500ms.</param>
 		/// <param name="maxWait">Maximum time to wait before giving up and returning anyway. Default: wait until cancelled.</param>
 		/// <param name="cancellationToken">Cancellation token.</param>
-		Task WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default);
+		Task<long> WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default);
 
 
 		/// <summary>
@@ -571,15 +572,17 @@ namespace Corner49.Infra.DB {
 		}
 
 		/// <inheritdoc />
-		public async Task WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default) {
+		public async Task<long> WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default) {
+			Stopwatch sw = Stopwatch.StartNew();
+
 			TimeSpan poll = pollInterval ?? TimeSpan.FromMilliseconds(500);
 			DateTime? deadline = maxWait.HasValue ? DateTime.UtcNow + maxWait.Value : null;
 
 			while (true) {
 				var stats = await _throughput.GetSnapshot();
 				bool underPressure = stats.IsUnderPressure(pressureThreshold);
-				if (!underPressure) return;
-				if (deadline.HasValue && DateTime.UtcNow >= deadline.Value) return;
+				if (!underPressure) return sw.ElapsedMilliseconds;
+				if (deadline.HasValue && DateTime.UtcNow >= deadline.Value) return sw.ElapsedMilliseconds;
 
 				cancellationToken.ThrowIfCancellationRequested();
 				await Task.Delay(poll, cancellationToken);
