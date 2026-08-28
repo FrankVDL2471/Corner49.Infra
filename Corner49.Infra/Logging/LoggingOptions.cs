@@ -19,7 +19,7 @@
 		public bool WriteToConsoleAsJson { get; set; }
 		public bool AzureWebAppDiagnostics { get; set; }
 
-		public bool ActivityTracking { get; set; } = false;	
+		public bool TrackActivity { get; set; }
 
 
 

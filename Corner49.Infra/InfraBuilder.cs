@@ -122,7 +122,7 @@ namespace Corner49.Infra {
 					opt.EnableDependencyTrackingTelemetryModule = _loggingOptions.TrackDependencies;
 				});
 
-				if (_loggingOptions.ActivityTracking) {
+				if (_loggingOptions.TrackActivity) {
 					_builder.Logging.Configure(options =>
 					{
 						options.ActivityTrackingOptions =
@@ -145,7 +145,7 @@ namespace Corner49.Infra {
 
 				if (_loggingOptions.WriteToConsoleAsJson) {
 					_builder.Logging.AddJsonConsole(log => {
-						log.IncludeScopes = _loggingOptions.ActivityTracking;
+						log.IncludeScopes = _loggingOptions.TrackActivity;
 						log.UseUtcTimestamp = false;
 						log.TimestampFormat = "dd-MM-yyyy HH:mm:ss";
 						log.JsonWriterOptions = new JsonWriterOptions {
