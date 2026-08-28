@@ -85,21 +85,21 @@ namespace Corner49.Infra {
 		//}
 
 
-		public static InfraBuilder UseInfra(this WebApplicationBuilder builder, string appName, string environment = null) {
+		public static InfraBuilder UseInfra(this WebApplicationBuilder builder, string appName, string? environment = null) {
 			builder.Configuration.AddInfra(environment ?? builder.Environment.EnvironmentName);
 			//Dot not log request comming from the loggin system itself  (ex /health checks)
 			builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", (level) => false);
 
 			return new InfraBuilder(builder, appName);
 		}
-		public static InfraBuilder UseInfra(this HostApplicationBuilder builder, string appName, string environment = null) {
+		public static InfraBuilder UseInfra(this HostApplicationBuilder builder, string appName, string? environment = null) {
 			builder.Configuration.AddInfra(environment ?? builder.Environment.EnvironmentName);
-			//Dot not log request comming from the loggin system itself  (ex /health checks)
+			//Dot not log request comming from the loggin system itself  (ex /health checks)?
 			builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", (level) => false);
 
 			return new InfraBuilder(builder, appName);
 		}
-		public static InfraBuilder UseInfra(this IHostApplicationBuilder builder, ConfigurationManager config, string appName, string environment = null) {
+		public static InfraBuilder UseInfra(this IHostApplicationBuilder builder, ConfigurationManager config, string appName, string? environment = null) {
 			builder.Configuration.AddInfra(environment ?? builder.Environment.EnvironmentName);
 			//Dot not log request comming from the loggin system itself  (ex /health checks)
 			builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", (level) => false);

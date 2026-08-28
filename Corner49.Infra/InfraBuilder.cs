@@ -122,6 +122,17 @@ namespace Corner49.Infra {
 					opt.EnableDependencyTrackingTelemetryModule = _loggingOptions.TrackDependencies;
 				});
 
+				if (_loggingOptions.ActivityTracking) {
+					_builder.Logging.Configure(options =>
+					{
+						options.ActivityTrackingOptions =
+								ActivityTrackingOptions.TraceId |
+								ActivityTrackingOptions.SpanId |
+								ActivityTrackingOptions.ParentId;
+					});
+				}
+
+
 				if (_loggingOptions.AzureWebAppDiagnostics) {
 					_builder.Logging.AddAzureWebAppDiagnostics(cfg => {
 						cfg.BlobName = this.Name + ".log";
@@ -134,7 +145,7 @@ namespace Corner49.Infra {
 
 				if (_loggingOptions.WriteToConsoleAsJson) {
 					_builder.Logging.AddJsonConsole(log => {
-						log.IncludeScopes = false;
+						log.IncludeScopes = _loggingOptions.ActivityTracking;
 						log.UseUtcTimestamp = false;
 						log.TimestampFormat = "dd-MM-yyyy HH:mm:ss";
 						log.JsonWriterOptions = new JsonWriterOptions {
