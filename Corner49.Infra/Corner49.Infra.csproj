@@ -12,27 +12,27 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.29.1" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.29.2" />
     <PackageReference Include="Azure.Storage.Files.Shares" Version="12.27.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.10" />
-		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
-		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.62.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.11" />
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.62.1" />
     <PackageReference Include="Microsoft.Azure.SignalR.Management" Version="1.33.1" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="3.1.2" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore" Version="8.6.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="3.1.2" />
-    <PackageReference Include="Microsoft.Extensions.Logging.AzureAppServices" Version="10.0.10" />
-    <PackageReference Include="OpenTelemetry.Api" Version="1.17.0" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.16.17" />
+    <PackageReference Include="Microsoft.Extensions.Logging.AzureAppServices" Version="10.0.11" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.18.0" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.17.2" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
-    <PackageReference Include="Auth0.AspNetCore.Authentication" Version="1.10.0" />
-    <PackageReference Include="Hangfire" Version="1.8.24" />
+    <PackageReference Include="Auth0.AspNetCore.Authentication" Version="1.11.0" />
+    <PackageReference Include="Hangfire" Version="1.8.25" />
     <PackageReference Include="Hangfire.AzureCosmosDB" Version="2.0.8" />
 		<PackageReference Include="Hangfire.SqlServer" Version="1.8.*" />
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
     <PackageReference Include="TimeZoneConverter" Version="7.2.0" />
-    <PackageReference Include="SkiaSharp" Version="4.150.1" />
+    <PackageReference Include="SkiaSharp" Version="4.151.1" />
   </ItemGroup>
   <ItemGroup>
     <None Update="README.md">
