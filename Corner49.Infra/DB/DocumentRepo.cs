@@ -46,10 +46,10 @@ namespace Corner49.Infra.DB {
 		/// raising provisioned throughput.
 		/// </summary>
 		/// <param name="pressureThreshold">Fraction (0-1) of provisioned RU/s above which the caller should wait. Default 0.8.</param>
-		/// <param name="pollInterval">How often to re-check while waiting. Default 500ms.</param>
+		/// <param name="pollInterval">How often to re-check while waiting. Default 1 second.</param>
 		/// <param name="maxWait">Maximum time to wait before giving up and returning anyway. Default: wait until cancelled.</param>
 		/// <param name="cancellationToken">Cancellation token.</param>
-		Task<long> WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default);
+		Task<long?> WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default);
 
 
 		/// <summary>
@@ -572,21 +572,24 @@ namespace Corner49.Infra.DB {
 		}
 
 		/// <inheritdoc />
-		public async Task<long> WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default) {
+		public async Task<long?> WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default) {
 			Stopwatch sw = Stopwatch.StartNew();
 
-			TimeSpan poll = pollInterval ?? TimeSpan.FromMilliseconds(500);
+			TimeSpan poll = pollInterval ?? TimeSpan.FromSeconds(1);
 			DateTime? deadline = maxWait.HasValue ? DateTime.UtcNow + maxWait.Value : null;
 
-			while (true) {
+			int cnt = 0;
+			while (!cancellationToken.IsCancellationRequested) {
 				var stats = await _throughput.GetSnapshot();
 				bool underPressure = stats.IsUnderPressure(pressureThreshold);
-				if (!underPressure) return sw.ElapsedMilliseconds;
-				if (deadline.HasValue && DateTime.UtcNow >= deadline.Value) return sw.ElapsedMilliseconds;
+				if (!underPressure) break;
+				if (deadline.HasValue && DateTime.UtcNow >= deadline.Value) break;
 
-				cancellationToken.ThrowIfCancellationRequested();
+				if (cancellationToken.IsCancellationRequested) break;
 				await Task.Delay(poll, cancellationToken);
+				cnt++;
 			}
+			return cnt == 0 ? null : sw.ElapsedMilliseconds;	
 		}
 
 		Task IDocumentRepoInitializer.Init() {
