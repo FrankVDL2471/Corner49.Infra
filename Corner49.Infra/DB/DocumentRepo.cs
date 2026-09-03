@@ -49,7 +49,7 @@ namespace Corner49.Infra.DB {
 		/// <param name="pollInterval">How often to re-check while waiting. Default 1 second.</param>
 		/// <param name="maxWait">Maximum time to wait before giving up and returning anyway. Default: wait until cancelled.</param>
 		/// <param name="cancellationToken">Cancellation token.</param>
-		Task<long?> WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default);
+		Task<bool> WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default);
 
 
 		/// <summary>
@@ -572,24 +572,20 @@ namespace Corner49.Infra.DB {
 		}
 
 		/// <inheritdoc />
-		public async Task<long?> WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default) {
-			Stopwatch sw = Stopwatch.StartNew();
-
+		public async Task<bool> WaitForCapacity(double pressureThreshold = 0.8, TimeSpan? pollInterval = null, TimeSpan? maxWait = null, CancellationToken cancellationToken = default) {
 			TimeSpan poll = pollInterval ?? TimeSpan.FromSeconds(1);
 			DateTime? deadline = maxWait.HasValue ? DateTime.UtcNow + maxWait.Value : null;
 
-			int cnt = 0;
 			while (!cancellationToken.IsCancellationRequested) {
 				var stats = await _throughput.GetSnapshot();
 				bool underPressure = stats.IsUnderPressure(pressureThreshold);
-				if (!underPressure) break;
+				if (!underPressure) return true;
 				if (deadline.HasValue && DateTime.UtcNow >= deadline.Value) break;
 
 				if (cancellationToken.IsCancellationRequested) break;
 				await Task.Delay(poll, cancellationToken);
-				cnt++;
 			}
-			return cnt == 0 ? null : sw.ElapsedMilliseconds;	
+			return false; //no capacity available within the maxWait time
 		}
 
 		Task IDocumentRepoInitializer.Init() {
