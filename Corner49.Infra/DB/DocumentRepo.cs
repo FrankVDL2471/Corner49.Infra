@@ -424,6 +424,39 @@ namespace Corner49.Infra.DB {
 		/// </remarks>
 		IAsyncEnumerable<JsonElement> RawSQL(string? partitionKey, string sql, Dictionary<string, object>? parameters = null, System.Threading.CancellationToken cancelToken = default);
 
+
+
+
+		/// <summary>
+		/// Executes a SQL query and returns raw JSON elements.
+		/// </summary>
+		/// <param name="partitionKey">Optional partition key, or null for cross-partition query.</param>
+		/// <param name="sql">SQL query string with parameters.</param>
+		/// <param name="parameters">Query parameters.</param>
+		/// <param name="blockSize">Maximal number of items in a single block/stream</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Async enumerable stream of JsonElement objects.</returns>
+		/// <remarks>
+		/// Use for dynamic queries where result schema is not known at compile time.
+		/// Returns a list of streams, each containing a block (blockSize) of JSON results. This can be useful for processing large result sets in chunks.
+		/// </remarks>
+		IAsyncEnumerable<Stream> StreamSQL(string? partitionKey, string sql, Dictionary<string, object>? parameters = null, int? blockSize = null, CancellationToken cancelToken = default);
+
+		/// <summary>
+		/// Executes a SQL query and returns raw JSON elements.
+		/// </summary>
+		/// <param name="partitionKey">Optional partition key, or null for cross-partition query.</param>
+		/// <param name="sql">SQL query string with parameters.</param>
+		/// <param name="parameters">Query parameters.</param>
+		/// <param name="blockSize">Maximal number of items in a single block/stream</param>
+		/// <param name="cancelToken">Cancellation token.</param>
+		/// <returns>Async enumerable stream of JsonElement objects.</returns>
+		/// <remarks>
+		/// Use for dynamic queries where result schema is not known at compile time.
+		/// Returns a list of streams, each containing a block (blockSize) of JSON results. This can be useful for processing large result sets in chunks.
+		/// </remarks>
+		IAsyncEnumerable<Stream> StreamSQL(string[]? partitionKey, string sql, Dictionary<string, object>? parameters = null, int? blockSize = null, CancellationToken cancelToken = default);
+
 		/// <summary>
 		/// Creates a change feed processor to monitor container changes in real-time.
 		/// </summary>
@@ -1573,6 +1606,8 @@ namespace Corner49.Infra.DB {
 			QueryRequestOptions options = new QueryRequestOptions();
 			options.PartitionKey = pk;
 
+
+
 			using (FeedIterator<object> feed = this.Container.GetItemQueryIterator<object>(def, null, options)) {
 				while (feed.HasMoreResults) {
 					FeedResponse<object> response = await ReadNextWithRetry(feed, nameof(RawSQL), cancelToken, _throughput);
@@ -1609,6 +1644,67 @@ namespace Corner49.Infra.DB {
 				}
 			}
 		}
+
+
+		public IAsyncEnumerable<Stream> StreamSQL(string? partitionKey, string sql, Dictionary<string, object>? parameters = null, int? blockSize = null, System.Threading.CancellationToken cancelToken = default) {
+			var pk = partitionKey != null ? new PartitionKey(partitionKey) : (PartitionKey?)null;
+			return StreamSQL(pk, sql, parameters, blockSize, cancelToken);
+		}
+		public IAsyncEnumerable<Stream> StreamSQL(string[]? partitionKey, string sql, Dictionary<string, object>? parameters = null, int? blockSize = null, System.Threading.CancellationToken cancelToken = default) {
+			var pk = GetPartitionKey(partitionKey);
+			return StreamSQL(pk, sql, parameters, blockSize, cancelToken);
+		}
+
+
+		private async IAsyncEnumerable<Stream> StreamSQL(PartitionKey? pk, string sql, Dictionary<string, object>? parameters = null, int? blockSize = null, [EnumeratorCancellation] System.Threading.CancellationToken cancelToken = default) {
+			QueryDefinition def = new QueryDefinition(sql);
+			if (parameters != null) {
+				foreach (var kv in parameters) {
+					def.WithParameter(kv.Key, kv.Value);
+				}
+			}
+
+			QueryRequestOptions options = new QueryRequestOptions();
+			options.PartitionKey = pk;
+			options.MaxItemCount = blockSize;
+
+
+
+			using (FeedIterator feed = this.Container.GetItemQueryStreamIterator(def, null, options)) {
+				while (feed.HasMoreResults) {
+					var response = await feed.ReadNextAsync();
+
+					var metrics = response.Diagnostics.GetQueryMetrics();
+					_throughput.Record(metrics.TotalRequestCharge, throttled: false);
+
+
+					try {
+						if (this.OnDiagnostics != null) {
+							_ = this.OnDiagnostics(new DocumentDiagnostics {
+								Repo = this.GetType().Name,
+								Method = nameof(StreamSQL),
+								Parameters = new Dictionary<string, object?>() {
+									{ "partitionKey", pk  },
+									{ "sql", sql },
+									{ "parameters", parameters }
+								},
+								StatusCode = response.StatusCode,
+								StartTime = response.Diagnostics?.GetStartTimeUtc(),
+								ElapsedTime = response.Diagnostics?.GetClientElapsedTime(),
+								TotalRequestCharge = metrics.TotalRequestCharge,
+							});
+						}
+					} catch {
+					}
+
+					yield return response.Content;
+					if (cancelToken.IsCancellationRequested) break;
+				}				
+			}
+		}
+
+
+
 
 		/// <summary>
 		/// Optional callback invoked when a BulkInsert/BulkUpdate/BulkDelete item fails (including 429s).

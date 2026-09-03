@@ -8,7 +8,7 @@ using Hangfire.Common;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 var infra = WebApplication.CreateBuilder(args)
-	.UseInfra("Sample")
+	.UseInfra("Sample", "Development")
 	.WithViewControllers(null, mvc => mvc.AddLogViewer())
 	.WithLogging(c => {
 		c.WriteToConsoleAsJson = true;
@@ -20,24 +20,26 @@ var infra = WebApplication.CreateBuilder(args)
 	.AddServiceBus()
 	.AddDocumentDB(bld => {
 		bld.Configure = (cfg) => {
-			cfg.DatabaseName = "test";
+			cfg.DatabaseName = "dev-ottogusto";
 		};
 
 		bld.AddRepo<IDataRepo, DataRepo>();
 	});
 
-	infra.AddJobs((bld) => {
-		bld.AddCronJob<TestJob>((cron) => cron.EveryMinute(5));
-		}
-						, cfg => {
-							cfg.UseLocalQueue = true;
-							cfg.DisableAutomaticRestart = true;
-							cfg.QueueName = "test";
-							cfg.UseSqlServer = true;
-							cfg.ConnectString = infra.Configuration["ConnectionStrings:ConnectionString"];
-							cfg.DbName = $"jobs-dev";
+//infra.AddJobs();
 
-						});
+//infra.AddJobs((bld) => {
+//	bld.AddCronJob<TestJob>((cron) => cron.EveryMinute(5));
+//}
+//					, cfg => {
+//						cfg.UseLocalQueue = true;
+//						cfg.DisableAutomaticRestart = true;
+//						cfg.QueueName = "test";
+//						cfg.UseSqlServer = true;
+//						cfg.ConnectString = infra.Configuration["ConnectionStrings:ConnectionString"];
+//						cfg.DbName = $"jobs-dev";
+
+//					});
 
 infra.Services.AddSingleton<IDataMessageService, DataMessageService>();
 

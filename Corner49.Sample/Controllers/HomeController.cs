@@ -14,17 +14,13 @@ using System.Threading.Tasks;
 namespace Corner49.Sample.Controllers {
 	public class HomeController : Controller {
 		private readonly ILogger<HomeController> _logger;
-		
-		private readonly IDataRepo _dataRepo;
-		private readonly IJobManager _jobManager;
-		private readonly IBlobService _blob;
-		private readonly IServiceBusService _serviceBus;
 
-		public HomeController(ILogger<HomeController> logger, IConfiguration config, IDataRepo dataRepo, IJobManager jobManager, IServiceBusService serviceBus) {
+		private readonly IDataRepo _dataRepo;
+		private readonly IBlobService _blob;
+
+		public HomeController(ILogger<HomeController> logger, IConfiguration config, IDataRepo dataRepo) {
 			_logger = logger;
 			_dataRepo = dataRepo;
-			_jobManager = jobManager;
-			_serviceBus = serviceBus;	
 
 			_blob = new BlobService("Public", config);
 
@@ -36,10 +32,6 @@ namespace Corner49.Sample.Controllers {
 		public async Task<IActionResult> Index() {
 			_logger.LogInformation("Load HomePage");
 
-
-			foreach(var job in _jobManager.GetJobs()) {
-				Console.WriteLine($"{job.Id}");
-			}
 
 
 			var data = new MemoryStream();
@@ -54,9 +46,25 @@ namespace Corner49.Sample.Controllers {
 		}
 
 
-		public async Task<IActionResult> DLQ() {
-			
-			await _serviceBus.ResubmitDeadletterQueue(new ServiceBusOptions(string.Empty) { Name = "clean_parts", Kind = ServiceBusKind.Queue });
+
+
+		public async Task<IActionResult> Test() 
+			{
+
+
+			await foreach (var data in _dataRepo.Export(null, "select * from c", 10)) {
+
+				using (var reader = new StreamReader(data)) {
+					var tst = reader.ReadToEnd();
+
+					Console.WriteLine("-------");
+					Console.WriteLine(tst);
+					Console.WriteLine("-------");
+
+				}
+			}
+
+
 			return RedirectToAction("Index");
 		}
 

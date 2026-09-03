@@ -1,6 +1,7 @@
 ﻿using Corner49.Infra.DB;
 using Corner49.Sample.Models;
 using Microsoft.Azure.Cosmos;
+using System.Text.Json;
 using System.Xml.Linq;
 
 
@@ -9,6 +10,8 @@ namespace Corner49.Sample.Repos {
 	public interface IDataRepo  {
 
 		Task<DataModel?> GetItem(string pk, string id);
+
+		IAsyncEnumerable<Stream> Export(string? partitionKey, string sql, int? maxCount);
 
 		Task<QueryResult<DataModel>> Query(Func<IQueryable<DataModel>, IQueryable<DataModel>> query);
 
@@ -49,6 +52,11 @@ namespace Corner49.Sample.Repos {
 		public Task<QueryResult<DataModel>> Query(Func<IQueryable<DataModel>, IQueryable<DataModel>> query) {
 			return _repo.Query((string?)null, query);
 		}
+
+		public IAsyncEnumerable<Stream> Export(string? partitionKey, string sql,  int? maxCount) {
+			return _repo.StreamSQL(partitionKey, sql,	null, maxCount);
+		}
+
 
 		// Example of an RU-intensive job pausing itself before it starts getting 429-throttled,
 		// instead of just retrying reactively after the fact.
