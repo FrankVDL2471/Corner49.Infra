@@ -1746,7 +1746,7 @@ namespace Corner49.Infra.DB {
 		/// <param name="items">Items to insert.</param>
 		/// <param name="getPartitionKey">Function to extract partition key from item.</param>
 		/// <param name="cancellationToken">Cancellation token.</param>
-		public async Task BulkInsert(IAsyncEnumerable<T> items, Func<T, string> getPartitionKey, CancellationToken cancellationToken = default) {
+		public async Task BulkInsert(IAsyncEnumerable<T> items, Func<T, string[]> getPartitionKey, CancellationToken cancellationToken = default) {
 			var container = this.Container;
 
 			using SemaphoreSlim throttle = new SemaphoreSlim(this.BulkMaxConcurrency);
@@ -1754,13 +1754,26 @@ namespace Corner49.Infra.DB {
 			await foreach (var itm in items) {
 				if (cancellationToken.IsCancellationRequested) break;
 
-				tasks.Add(RunBulkItem(throttle, itm, () => container.CreateItemAsync(itm, new PartitionKey(getPartitionKey(itm)), null, cancellationToken), cancellationToken));
+				tasks.Add(RunBulkItem(throttle, itm, () => container.CreateItemAsync(itm, GetPartitionKey(getPartitionKey(itm)), null, cancellationToken), cancellationToken));
+			}
+
+			await Task.WhenAll(tasks);
+		}
+		public async Task BulkInsert(IEnumerable<T> items, Func<T, string[]> getPartitionKey, CancellationToken cancellationToken = default) {
+			var container = this.Container;
+
+			using SemaphoreSlim throttle = new SemaphoreSlim(this.BulkMaxConcurrency);
+			List<Task> tasks = new List<Task>();
+			foreach (var itm in items) {
+				if (cancellationToken.IsCancellationRequested) break;
+
+				tasks.Add(RunBulkItem(throttle, itm, () => container.CreateItemAsync(itm, GetPartitionKey(getPartitionKey(itm)), null, cancellationToken), cancellationToken));
 			}
 
 			await Task.WhenAll(tasks);
 		}
 
-		public async Task BulkDelete(IAsyncEnumerable<T> items, Func<T, string> getId, Func<T, string> getPartitionKey, CancellationToken cancellationToken = default) {
+		public async Task BulkDelete(IAsyncEnumerable<T> items, Func<T, string> getId, Func<T, string[]> partitionKey, CancellationToken cancellationToken = default) {
 			var container = this.Container;
 
 			using SemaphoreSlim throttle = new SemaphoreSlim(this.BulkMaxConcurrency);
@@ -1768,13 +1781,32 @@ namespace Corner49.Infra.DB {
 			await foreach (var itm in items) {
 				if (cancellationToken.IsCancellationRequested) break;
 
-				tasks.Add(RunBulkItem(throttle, itm, () => container.DeleteItemAsync<T>(getId(itm), new PartitionKey(getPartitionKey(itm)), null, cancellationToken), cancellationToken));
+				var pk = GetPartitionKey(partitionKey(itm));
+				if (pk == null) continue;
+
+				tasks.Add(RunBulkItem(throttle, itm, () => container.DeleteItemAsync<T>(getId(itm), pk.Value, null, cancellationToken), cancellationToken));
+			}
+
+			await Task.WhenAll(tasks);
+		}
+		public async Task BulkDelete(IEnumerable<T> items, Func<T, string> getId, Func<T, string[]> partitionKey, CancellationToken cancellationToken = default) {
+			var container = this.Container;
+
+			using SemaphoreSlim throttle = new SemaphoreSlim(this.BulkMaxConcurrency);
+			List<Task> tasks = new List<Task>();
+			foreach (var itm in items) {
+				if (cancellationToken.IsCancellationRequested) break;
+
+				var pk = GetPartitionKey(partitionKey(itm));
+				if (pk == null) continue;
+
+				tasks.Add(RunBulkItem(throttle, itm, () => container.DeleteItemAsync<T>(getId(itm), pk.Value, null, cancellationToken), cancellationToken));
 			}
 
 			await Task.WhenAll(tasks);
 		}
 
-		public async Task BulkUpdate(IAsyncEnumerable<T> items, Func<T, string> getId, Func<T, string> getPartitionKey, Func<T, T>? update = null, CancellationToken cancellationToken = default) {
+		public async Task BulkUpdate(IAsyncEnumerable<T> items, Func<T, string> getId, Func<T, string[]> getPartitionKey, Func<T, T>? update = null, CancellationToken cancellationToken = default) {
 			var container = this.Container;
 
 			using SemaphoreSlim throttle = new SemaphoreSlim(this.BulkMaxConcurrency);
@@ -1783,7 +1815,22 @@ namespace Corner49.Infra.DB {
 				if (cancellationToken.IsCancellationRequested) break;
 
 				T item = update == null ? itm : update(itm);
-				tasks.Add(RunBulkItem(throttle, itm, () => container.ReplaceItemAsync(item, getId(itm), new PartitionKey(getPartitionKey(itm)), null, cancellationToken), cancellationToken));
+				tasks.Add(RunBulkItem(throttle, itm, () => container.ReplaceItemAsync(item, getId(itm), GetPartitionKey(getPartitionKey(itm)), null, cancellationToken), cancellationToken));
+			}
+
+			await Task.WhenAll(tasks);
+		}
+
+		public async Task BulkUpdate(IEnumerable<T> items, Func<T, string> getId, Func<T, string[]> getPartitionKey, Func<T, T>? update = null, CancellationToken cancellationToken = default) {
+			var container = this.Container;
+
+			using SemaphoreSlim throttle = new SemaphoreSlim(this.BulkMaxConcurrency);
+			List<Task> tasks = new List<Task>();
+			foreach (var itm in items) {
+				if (cancellationToken.IsCancellationRequested) break;
+
+				T item = update == null ? itm : update(itm);
+				tasks.Add(RunBulkItem(throttle, itm, () => container.ReplaceItemAsync(item, getId(itm), GetPartitionKey(getPartitionKey(itm)), null, cancellationToken), cancellationToken));
 			}
 
 			await Task.WhenAll(tasks);
