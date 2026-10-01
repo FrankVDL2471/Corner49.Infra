@@ -21,6 +21,7 @@
 		public JobConfig() {
 			this.EnableDashboard = true;
 			this.DisableAutomaticRestart = true;
+			this.RunServer = true;
 		}
 
 		public string ConnectString { get; set; }
@@ -39,5 +40,7 @@
 		public bool EnableDashboard { get; set; }
 
 		public int? WorkerCount { get; set; }
+
+		public bool RunServer { get; set; }
 	}
 }

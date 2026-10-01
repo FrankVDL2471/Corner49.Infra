@@ -52,15 +52,19 @@ namespace Corner49.Infra.Jobs {
 				services.AddHangfire(x => x.UseAzureCosmosDbStorage(url, authSecret, config.DbName, config.ContainerName));
 			}
 
-			services.AddHangfireServer((cfg) => {
-				cfg.CancellationCheckInterval = TimeSpan.FromSeconds(5);
-				cfg.Queues = new[] { config.UseLocalQueue ? System.Environment.MachineName.ToLower() : (config.QueueName ?? "default") };
-				if (config.WorkerCount != null) cfg.WorkerCount = config.WorkerCount.Value;
-			});
+			if (config.RunServer) {
+				services.AddHangfireServer((cfg) => {
+					cfg.CancellationCheckInterval = TimeSpan.FromSeconds(5);
+					cfg.Queues = new[] { config.UseLocalQueue ? System.Environment.MachineName.ToLower() : (config.QueueName ?? "default") };
+					if (config.WorkerCount != null) cfg.WorkerCount = config.WorkerCount.Value;
+				});
+			}
 			services.AddHostedService<JobManager>();
 			services.AddSingleton<IJobConfig>(config);
 			services.AddSingleton<IJobManager, JobManager>();
 		}
+
+
 
 		public void AddJob<TService, TImplementation>() where TImplementation : JobRunner, TService {
 			_services.AddSingleton(typeof(TService), typeof(TImplementation));

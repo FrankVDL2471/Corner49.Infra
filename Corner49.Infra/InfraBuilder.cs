@@ -469,7 +469,7 @@ namespace Corner49.Infra {
 
 		private JobBuilder _jobs = null;
 
-		public InfraBuilder AddJobs(Action<JobBuilder> builder, Action<JobConfig> config = null) {
+		public InfraBuilder AddJobs(Action<JobBuilder>? builder, Action<JobConfig>? config = null) {
 			JobConfig cfg = new JobConfig();
 			cfg.ConnectString = this.Configuration["CosmosDB:ConnectString"];
 			cfg.DbName = this.Configuration["CosmosDB:DBName"];
