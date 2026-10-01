@@ -53,7 +53,7 @@ namespace Corner49.Infra.Jobs {
 
 		[DisplayName("{0}")]
 		[AutomaticRetry(OnAttemptsExceeded = AttemptsExceededAction.Fail, Attempts = 0, LogEvents = true)]
-		public async Task Run(string name, Dictionary<string, string>? args = null, CancellationToken cancellationToken = default) {
+		public virtual async Task Run(string name, Dictionary<string, string>? args = null, CancellationToken cancellationToken = default) {
 			string fullName = name;
 			if (args != null) {
 				fullName += "(" + string.Join(", ", args.Select(c => $"{c.Key}={c.Value}")) + ")";
