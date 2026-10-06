@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Corner49.Core {
 	public interface IInfraBuilder {
 
+		string Name { get;  }
 
+		IServiceCollection Services { get; }
+		IConfigurationManager Configuration { get;  }
 
-
-		public IInfraBuilder AddExtension(InfraExtension extension);
+		IInfraBuilder AddExtension(InfraExtension extension);
 	}
 }

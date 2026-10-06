@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Corner49.Core {
 	public class InfraExtension {
@@ -7,7 +6,7 @@ namespace Corner49.Core {
 
 
 
-		public virtual Task Build(IServiceCollection services, IConfiguration config) {
+		public virtual Task Build(IInfraBuilder ìnfra, IConfiguration config) {
 			return Task.CompletedTask;
 		}
 

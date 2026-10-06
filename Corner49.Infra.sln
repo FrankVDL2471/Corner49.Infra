@@ -28,6 +28,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corner49.Core", "Corner49.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corner49.ServiceBus", "Corner49.ServiceBus\Corner49.ServiceBus.csproj", "{1A37C6A5-253B-45B8-8DE7-05951447987E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{F6181740-6853-4A08-BD00-1956A6EA636A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -77,6 +79,11 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{75937667-9B4D-F3CC-C1BF-DA23B9CE3D4A} = {F6181740-6853-4A08-BD00-1956A6EA636A}
+		{7F2AB5AD-353C-A82C-E784-B546ADE2655C} = {F6181740-6853-4A08-BD00-1956A6EA636A}
+		{265C692D-13B2-42BE-9F5D-27B123E7257B} = {F6181740-6853-4A08-BD00-1956A6EA636A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {8DDFDC2B-F127-4EFC-9263-994B08CDFCA7}

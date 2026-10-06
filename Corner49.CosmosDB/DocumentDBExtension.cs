@@ -17,8 +17,8 @@ namespace Corner49.CosmosDB {
 		}
 
 
-		public override Task Build(IServiceCollection services, IConfiguration config) {
-			_docDBBuilder = services.AddDocumentDB(config, _repos);
+		public override Task Build(IInfraBuilder infra, IConfiguration config) {
+			_docDBBuilder = infra.Services.AddDocumentDB(config, _repos);
 
 			try {
 				if (!Debugger.IsAttached) {

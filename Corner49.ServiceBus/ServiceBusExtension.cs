@@ -18,24 +18,24 @@ namespace Corner49.ServiceBus {
 		public Action<ServiceBusBuilder>? Init { get; set; }
 		
 
-		public override Task Build(IServiceCollection services, IConfiguration config) {
-			services.Configure<ServiceBusConfiguration>((cfg) => {
+		public override Task Build(IInfraBuilder infra, IConfiguration config) {
+			infra.Services.Configure<ServiceBusConfiguration>((cfg) => {
 				config.GetSection(ServiceBusConfiguration.SectionName).Bind(cfg);
 				if (_config != null) {
 					_config(cfg);
 				}
 			});
-			services.AddSingleton<IServiceBusService, ServiceBusService>();
+			infra.Services.AddSingleton<IServiceBusService, ServiceBusService>();
 
 
 			
 			if (this.Init != null) {
-				var bld = new ServiceBusBuilder(services); 
+				var bld = new ServiceBusBuilder(infra); 
 				this.Init(bld);
 			}
 
 
-			return base.Build(services, config);
+			return base.Build(infra, config);
 		}
 
 	}

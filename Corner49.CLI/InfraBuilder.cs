@@ -25,7 +25,6 @@ namespace Corner49.CLI {
 			_services = _builder.Services;
 			_appName = appName;
 
-
 			Instance = new InfraBuilderInstance { Name = appName };
 		}
 
@@ -163,7 +162,7 @@ namespace Corner49.CLI {
 		public async Task BuildAndRun(params string[] args) {
 			if (_builder is HostApplicationBuilder host) {
 				foreach(var ext in _extensions) {
-					await ext.Build(this.Services, this.Configuration);
+					await ext.Build(this, this.Configuration);
 				}	
 
 				var app = host.Build();
