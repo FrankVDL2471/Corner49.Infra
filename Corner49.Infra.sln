@@ -30,6 +30,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corner49.ServiceBus", "Corn
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{F6181740-6853-4A08-BD00-1956A6EA636A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corner49.Storage", "Corner49.Storage\Corner49.Storage.csproj", "{D0207263-0895-4930-8A8E-2272A5918A46}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -76,6 +78,10 @@ Global
 		{1A37C6A5-253B-45B8-8DE7-05951447987E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A37C6A5-253B-45B8-8DE7-05951447987E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1A37C6A5-253B-45B8-8DE7-05951447987E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0207263-0895-4930-8A8E-2272A5918A46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0207263-0895-4930-8A8E-2272A5918A46}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0207263-0895-4930-8A8E-2272A5918A46}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0207263-0895-4930-8A8E-2272A5918A46}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
