@@ -1,5 +1,6 @@
 ﻿using Corner49.Infra.Helpers;
 using Hangfire;
+using Hangfire.MemoryStorage;
 using Hangfire.SqlServer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.SqlClient;
@@ -9,7 +10,6 @@ namespace Corner49.Infra.Jobs {
 	public class JobBuilder {
 
 		private readonly IServiceCollection _services;
-		private readonly Hangfire.Azure.CosmosDbStorage? _storage;
 		private readonly JobConfig _config;
 
 		public JobBuilder(IServiceCollection services, JobConfig config) {
@@ -31,25 +31,7 @@ namespace Corner49.Infra.Jobs {
 
 				services.AddHangfire(x => x.UseSqlServerStorage(bld.ToString()));
 			} else {
-				string? url = CosmosDBHelper.GetUrl(config.ConnectString);
-				string? authSecret = CosmosDBHelper.GetAuthSecret(config.ConnectString);
-
-				if (string.IsNullOrEmpty(url)) {
-					Console.Error.WriteLine("JobBuilder failed : CosmosDB Url not set");
-					return;
-				}
-				if (string.IsNullOrEmpty(authSecret)) {
-					Console.Error.WriteLine("JobBuilder failed : CosmosDB AuthSecret not set");
-					return;
-				}
-
-				_storage = Hangfire.Azure.CosmosDbStorage.Create(url, authSecret, config.DbName, config.ContainerName);
-				GlobalConfiguration.Configuration
-					.UseStorage(_storage)
-					.UseIgnoredAssemblyVersionTypeResolver()
-					.UseSimpleAssemblyNameTypeSerializer();
-
-				services.AddHangfire(x => x.UseAzureCosmosDbStorage(url, authSecret, config.DbName, config.ContainerName));
+				services.AddHangfire(x => x.UseMemoryStorage());
 			}
 
 			if (config.RunServer) {
@@ -90,7 +72,7 @@ namespace Corner49.Infra.Jobs {
 				DashboardTitle = _config.DbName ?? $"{appName} Jobs",
 				AppPath = "/index.html",
 				Authorization = new[] { new JobAuth() }
-			}, _storage);
+			});
 		}
 
 

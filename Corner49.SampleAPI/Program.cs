@@ -1,10 +1,4 @@
-
-using Auth0.AspNetCore.Authentication.BackchannelLogout;
 using Corner49.Infra;
-using Corner49.Infra.Messages;
-using Corner49.Infra.Storage;
-using Corner49.SampleAPI.Handlers;
-using System.Reflection.Metadata.Ecma335;
 
 namespace Corner49.SampleAPI {
 	public class Program {
@@ -31,10 +25,10 @@ namespace Corner49.SampleAPI {
 			//	 cfg.DbName = "jobs-dev-test";
 			// });
 
-			infra = infra.AddServiceBus(cfg => {
-				//cfg.DeveloperMode = true;
-//				cfg.IsBasicTier = true;
-			});
+//			infra = infra.AddServiceBus(cfg => {
+//				//cfg.DeveloperMode = true;
+////				cfg.IsBasicTier = true;
+//			});
 
 //			infra.AddMessageHandler<TestMessage, TestMessageHandler>();
 

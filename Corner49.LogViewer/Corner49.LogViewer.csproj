@@ -22,5 +22,6 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\Corner49.FormBuilder\Corner49.FormBuilder.csproj" />
 	  <ProjectReference Include="..\Corner49.Infra\Corner49.Infra.csproj" />
+	  <ProjectReference Include="..\Corner49.Storage\Corner49.Storage.csproj" />
 	</ItemGroup>
 </Project>

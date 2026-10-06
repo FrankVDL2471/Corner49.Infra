@@ -94,6 +94,15 @@ namespace Corner49.CLI {
 			} else if (IsLocalEnvironment || Environment.GetEnvironmentVariable("ConsoleLog") == "true") {
 				_builder.Logging.AddConsole();
 			}
+			if (_loggingOptions.FilterCategoryPrefix != null) {
+				_builder.Logging.AddFilter((cat, level) => {
+					if ((level == Microsoft.Extensions.Logging.LogLevel.Error) || (level == Microsoft.Extensions.Logging.LogLevel.Critical)) return true;
+					foreach (var prefix in _loggingOptions.FilterCategoryPrefix) {
+						if (cat?.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) == true) return true;
+					}
+					return false;
+				});
+			}
 
 
 			return this;

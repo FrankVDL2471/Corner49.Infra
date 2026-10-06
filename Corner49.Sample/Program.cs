@@ -6,8 +6,11 @@ using Corner49.Sample.Messages;
 using Corner49.Sample.Repos;
 using Hangfire.Common;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Corner49.CosmosDB;
 
-var infra = WebApplication.CreateBuilder(args)
+public partial class Program {
+	private static async Task Main(string[] args) {
+		var infra = WebApplication.CreateBuilder(args)
 	.UseInfra("Sample", "Development")
 	.WithViewControllers(null, mvc => mvc.AddLogViewer())
 	.WithLogging(c => {
@@ -16,9 +19,11 @@ var infra = WebApplication.CreateBuilder(args)
 			"Corner49"
 		};
 	})
-	.WithAuth0()
-	.AddServiceBus()
-	.AddDocumentDB(bld => {
+	.WithAuth0();
+
+
+
+	infra.AddDocumentDB(bld => {
 		bld.Configure = (cfg) => {
 			cfg.DatabaseName = "dev-ottogusto";
 		};
@@ -26,41 +31,41 @@ var infra = WebApplication.CreateBuilder(args)
 		bld.AddRepo<IDataRepo, DataRepo>();
 	});
 
-//infra.AddJobs();
+		//infra.AddJobs();
 
-//infra.AddJobs((bld) => {
-//	bld.AddCronJob<TestJob>((cron) => cron.EveryMinute(5));
-//}
-//					, cfg => {
-//						cfg.UseLocalQueue = true;
-//						cfg.DisableAutomaticRestart = true;
-//						cfg.QueueName = "test";
-//						cfg.UseSqlServer = true;
-//						cfg.ConnectString = infra.Configuration["ConnectionStrings:ConnectionString"];
-//						cfg.DbName = $"jobs-dev";
+		//infra.AddJobs((bld) => {
+		//	bld.AddCronJob<TestJob>((cron) => cron.EveryMinute(5));
+		//}
+		//					, cfg => {
+		//						cfg.UseLocalQueue = true;
+		//						cfg.DisableAutomaticRestart = true;
+		//						cfg.QueueName = "test";
+		//						cfg.UseSqlServer = true;
+		//						cfg.ConnectString = infra.Configuration["ConnectionStrings:ConnectionString"];
+		//						cfg.DbName = $"jobs-dev";
 
-//					});
+		//					});
 
-infra.Services.AddSingleton<IDataMessageService, DataMessageService>();
-
-
-
-//infra.AddServiceBusHandler<BusHandler>(cfg => {
-//	cfg.Name = "samplequeue";
-//	cfg.Kind = Corner49.Infra.ServiceBus.ServiceBusKind.Queue;
-//#if DEBUG
-//	cfg.MaxConcurrentCalls = 1;
-//#else
-//				cfg.MaxConcurrentCalls = 50;
-//#endif
-//});
+		infra.Services.AddSingleton<IDataMessageService, DataMessageService>();
 
 
 
-//Custom services
+		//infra.AddServiceBusHandler<BusHandler>(cfg => {
+		//	cfg.Name = "samplequeue";
+		//	cfg.Kind = Corner49.Infra.ServiceBus.ServiceBusKind.Queue;
+		//#if DEBUG
+		//	cfg.MaxConcurrentCalls = 1;
+		//#else
+		//				cfg.MaxConcurrentCalls = 50;
+		//#endif
+		//});
 
 
-//Build and run
-await infra.BuildAndRun((app) => {
-	return Task.CompletedTask;
-});
+
+		//Custom services
+
+
+		//Build and run
+		await infra.BuildAndRun();
+	}
+}

@@ -1,4 +1,5 @@
-﻿using Corner49.Infra.ServiceBus;
+﻿using Corner49.ServiceBus;
+using Corner49.ServiceBus.Bus;
 
 namespace Corner49.Sample.Handlers {
 	public class BusHandler : IServiceBusHandler {

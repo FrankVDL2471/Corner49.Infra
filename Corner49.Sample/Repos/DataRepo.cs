@@ -1,8 +1,5 @@
-﻿using Corner49.Infra.DB;
+﻿using Corner49.CosmosDB.DB;
 using Corner49.Sample.Models;
-using Microsoft.Azure.Cosmos;
-using System.Text.Json;
-using System.Xml.Linq;
 
 
 namespace Corner49.Sample.Repos {

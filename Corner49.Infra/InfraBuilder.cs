@@ -1,14 +1,12 @@
 ﻿using Auth0.AspNetCore.Authentication;
+using Corner49.Core;
+using Corner49.Core.Helpers;
 using Corner49.Infra.ApiKey;
 using Corner49.Infra.Auth;
-using Corner49.Infra.DB;
 using Corner49.Infra.Health;
 using Corner49.Infra.Helpers;
 using Corner49.Infra.Jobs;
 using Corner49.Infra.Logging;
-using Corner49.Infra.ServiceBus;
-using Corner49.Infra.Tools;
-using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.OpenApi;
@@ -29,7 +27,7 @@ namespace Corner49.Infra {
 		public IServiceProvider? Services { get; set; }
 	}
 
-	public class InfraBuilder {
+	public class InfraBuilder : IInfraBuilder {
 
 		private readonly IHostApplicationBuilder _builder;
 		private readonly IServiceCollection _services;
@@ -40,11 +38,8 @@ namespace Corner49.Infra {
 			_services = _builder.Services;
 			_appName = appName;
 
-			//Internal services
-			_services.AddSingleton<IServiceBusService, ServiceBusService>();
 
 
-			Configuration = builder.Configuration;
 			Instance = new InfraBuilderInstance { Name = appName };
 		}
 		public InfraBuilder(HostApplicationBuilder builder, string appName) {
@@ -52,11 +47,7 @@ namespace Corner49.Infra {
 			_services = _builder.Services;
 			_appName = appName;
 
-			//Internal services
-			_services.AddSingleton<IServiceBusService, ServiceBusService>();
 
-
-			Configuration = builder.Configuration;
 			Instance = new InfraBuilderInstance { Name = appName };
 		}
 
@@ -65,11 +56,8 @@ namespace Corner49.Infra {
 			_services = _builder.Services;
 			_appName = appName;
 
-			//Internal services
-			_services.AddSingleton<IServiceBusService, ServiceBusService>();
 
 
-			Configuration = config;
 			Instance = new InfraBuilderInstance { Name = appName };
 		}
 
@@ -78,7 +66,7 @@ namespace Corner49.Infra {
 
 		public static InfraBuilderInstance Instance { get; private set; } = new InfraBuilderInstance();
 
-		public ConfigurationManager Configuration;
+		public IConfigurationManager Configuration { get => _builder.Configuration; }
 
 		public IServiceCollection Services { get => _services; }
 
@@ -129,15 +117,6 @@ namespace Corner49.Infra {
 								ActivityTrackingOptions.TraceId |
 								ActivityTrackingOptions.SpanId |
 								ActivityTrackingOptions.ParentId;
-					});
-				}
-
-
-				if (_loggingOptions.AzureWebAppDiagnostics) {
-					_builder.Logging.AddAzureWebAppDiagnostics(cfg => {
-						cfg.BlobName = this.Name + ".log";
-						cfg.IncludeScopes = true;
-						cfg.IsEnabled = true;
 					});
 				}
 
@@ -392,48 +371,6 @@ namespace Corner49.Infra {
 
 		#endregion
 
-		#region ServiceBus
-
-
-		public InfraBuilder AddServiceBus(Action<ServiceBusConfiguration>? config = null) {
-			this.Services.Configure<ServiceBusConfiguration>((cfg) => {
-				this.Configuration.GetSection(ServiceBusConfiguration.SectionName).Bind(cfg);
-				if (config != null) {
-					config(cfg);
-				}
-			});
-
-			return this;
-
-		}
-
-
-		/// <summary>
-		/// Link a Processor to a ServiceBus queue or topic
-		/// </summary>
-		/// <typeparam name="T">PubSubProcessor implementation</typeparam>
-		/// <param name="options">ServiceBus confiruation</param>
-		/// <returns></returns>
-		public InfraBuilder AddServiceBusHandler<T>(Action<IServiceBusOptions>? options = null) where T : class, IServiceBusHandler {
-			_services.AddHostedService((srv) => {
-				var logger = srv.GetRequiredService<ILogger<T>>();
-				var config = srv.GetRequiredService<IConfiguration>();
-				var bus = srv.GetRequiredService<IServiceBusService>();
-				var tc = srv.GetService<TelemetryClient>();
-
-				ServiceBusOptions opt = new ServiceBusOptions(typeof(T).Name);
-				if (options != null) options.Invoke(opt);
-
-				if (string.IsNullOrEmpty(opt.Name)) {
-					throw new ArgumentNullException("Name", "ServiceBusOptions.Name must be set");
-				}
-
-				return new ServiceBusTrigger<T>(logger, tc, srv, bus, opt);
-			});
-			return this;
-		}
-
-		#endregion
 
 		#region SignalR
 
@@ -489,27 +426,6 @@ namespace Corner49.Infra {
 
 		#endregion
 
-		#region DocumentDB
-
-		private DocumentDBBuilder _docDBBuilder = null;
-
-		public InfraBuilder AddDocumentDB(Action<DocumentDBBuilder>? repos = null) {
-			_docDBBuilder = this.Services.AddDocumentDB(this.Configuration, repos);
-
-			try {
-				if (!Debugger.IsAttached) {
-					Type defaultTrace = Type.GetType("Microsoft.Azure.Cosmos.Core.Trace.DefaultTrace,Microsoft.Azure.Cosmos.Direct");
-					TraceSource traceSource = (TraceSource)defaultTrace.GetProperty("TraceSource").GetValue(null);
-					if (traceSource?.Listeners != null) traceSource.Listeners.Remove("Default");
-				}
-			} catch (Exception ex) {
-				Console.WriteLine($"Error disabling CosmosDB default trace: {ex.Message}");
-			}
-			return this;
-		}
-
-		#endregion
-
 
 		#region Sessions
 
@@ -534,6 +450,21 @@ namespace Corner49.Infra {
 
 		#endregion
 
+
+
+		#region Extensions
+
+
+		private List<InfraExtension> _extensions = new List<InfraExtension>();
+
+		public IInfraBuilder AddExtension(InfraExtension ext) {
+			_extensions.Add(ext);
+			return this;
+		}
+
+
+		#endregion
+
 		private bool _showDeveloperError = false;
 		private string? _errorPage = null;
 		public InfraBuilder WithErrorHandler(bool showDeveloperError, string? errorPage = null) {
@@ -544,6 +475,10 @@ namespace Corner49.Infra {
 
 
 		public async Task BuildAndRun(Func<WebApplication, Task>? afterBuild = null, Action<WebApplication>? map = null, string? fallbackUrl = null) {
+			foreach (var ext in _extensions) {
+				await ext.Build(this, this.Configuration);
+			}
+
 			var app = (_builder as WebApplicationBuilder).Build();
 
 
@@ -637,31 +572,40 @@ namespace Corner49.Infra {
 				map(app);
 			}
 
-
-
-
-			if (_docDBBuilder != null) await _docDBBuilder.Init(app.Services);
+			foreach (var ext in _extensions) {
+				await ext.Start(app.Services);
+			}
 			InfraBuilder.Instance.Services = app.Services;
 			await app.RunAsync();
 		}
 
 		public async Task Run(IHost host) {
-			if (_docDBBuilder != null) await _docDBBuilder.Init(host.Services);
+			foreach (var ext in _extensions) {
+				await ext.Start(host.Services);
+			}
 			InfraBuilder.Instance.Services = host.Services;
 			await host.RunAsync();
 		}
 
 
 
-		public Task BuildAndRun() {
+		public async Task BuildAndRun() {
 			if (_builder is HostApplicationBuilder host) {
+				foreach (var ext in _extensions) {
+					await ext.Build(this, this.Configuration);
+				}
+
 				var app = host.Build();
+
+				foreach (var ext in _extensions) {
+					await ext.Start(app.Services);
+				}
+
 				InfraBuilder.Instance.Services = app.Services;
-				return app.RunAsync();
+				await app.RunAsync();
 			} else if (_builder is WebApplicationBuilder web) {
-				return BuildAndRun(null, null, null);
+				await BuildAndRun(null, null, null);
 			}
-			return Task.CompletedTask;
 		}
 
 

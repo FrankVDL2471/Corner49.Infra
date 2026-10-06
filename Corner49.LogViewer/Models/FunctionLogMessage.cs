@@ -1,4 +1,5 @@
-﻿using Corner49.Infra.Tools;
+﻿using Corner49.Core.Helpers;
+using Corner49.Infra.Tools;
 using System.Text.Json;
 
 namespace Corner49.LogViewer.Models {

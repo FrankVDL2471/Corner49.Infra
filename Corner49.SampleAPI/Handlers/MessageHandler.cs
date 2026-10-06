@@ -1,5 +1,6 @@
 ﻿using Corner49.Infra.Messages;
-using Corner49.Infra.ServiceBus;
+using Corner49.ServiceBus;
+using Corner49.ServiceBus.Bus;
 
 namespace Corner49.SampleAPI.Handlers {
 	public class MessageHandler : IServiceBusHandler {

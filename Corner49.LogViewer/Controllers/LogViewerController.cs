@@ -1,15 +1,6 @@
-﻿using Corner49.Infra.Storage;
-using Corner49.LogViewer.Models;
+﻿using Corner49.LogViewer.Models;
 using Corner49.LogViewer.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Security.Cryptography.Pkcs;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Corner49.LogViewer.Controllers {
 

@@ -1,6 +1,7 @@
 ﻿using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Corner49.Core.Helpers;
 using Corner49.Infra.Tools;
 using Corner49.LogViewer.Models;
 using Microsoft.Azure.Cosmos.Linq;

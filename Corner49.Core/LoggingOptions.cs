@@ -28,5 +28,11 @@ namespace Corner49.Core {
 		public bool WriteToConsoleAsJson { get; set; }
 
 
+		/// <summary>
+		/// Filter logging bases on category prefix
+		/// </summary>
+		public string[]? FilterCategoryPrefix { get; set; }
+
+
 	}
 }
