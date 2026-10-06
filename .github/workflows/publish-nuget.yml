@@ -10,6 +10,8 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # enable GitHub OIDC token issuance for this job
     
     env:
       APP_VERSION: 10.0.${{github.run_number}}
