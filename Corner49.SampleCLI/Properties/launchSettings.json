@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "Corner49.SampleCLI": {
+      "commandName": "Project",
+      "commandLineArgs": "parts",
+      "environmentVariables": {
+        "AppConfig": "Endpoint=https://cp2-dev-appconfig.azconfig.io;Id=9aSU;Secret=EpGXl0Ahal4y8R6TvGegwRbTjJquLOXqaMP7TZGVrt5wt7Ms8XcqJQQJ99AKAC5RqLJgqKBfAAABAZAC1EVY",
+        "Sandbox": "True",
+        "IsLocalEnv": "True"
+      }
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
