@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Corner49.CLI\Corner49.CLI.csproj" />
     <ProjectReference Include="..\Corner49.CosmosDB\Corner49.CosmosDB.csproj" />
+    <ProjectReference Include="..\Corner49.ServiceBus\Corner49.ServiceBus.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,7 @@
 ﻿using Corner49.CLI;
 using Corner49.CosmosDB;
 using Corner49.SampleCLI.Repos;
+using Corner49.ServiceBus;
 
 namespace Corner49.SampleCLI {
 	internal class Program {
@@ -22,6 +23,7 @@ namespace Corner49.SampleCLI {
 
 					 bld.AddRepo<IDataRepo, DataRepo>();
 				 });
+
 
 
 

@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corner49.CosmosDB", "Corner
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corner49.Core", "Corner49.Core\Corner49.Core.csproj", "{1AADCBAA-5D98-4D43-AA9C-23D4F202B5FC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corner49.ServiceBus", "Corner49.ServiceBus\Corner49.ServiceBus.csproj", "{1A37C6A5-253B-45B8-8DE7-05951447987E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,6 +70,10 @@ Global
 		{1AADCBAA-5D98-4D43-AA9C-23D4F202B5FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1AADCBAA-5D98-4D43-AA9C-23D4F202B5FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1AADCBAA-5D98-4D43-AA9C-23D4F202B5FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A37C6A5-253B-45B8-8DE7-05951447987E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A37C6A5-253B-45B8-8DE7-05951447987E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A37C6A5-253B-45B8-8DE7-05951447987E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A37C6A5-253B-45B8-8DE7-05951447987E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
