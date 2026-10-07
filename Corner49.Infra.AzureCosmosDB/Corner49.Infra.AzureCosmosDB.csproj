@@ -6,7 +6,21 @@
     <Nullable>enable</Nullable>
 		<AzureCosmosDisableNewtonsoftJsonCheck>true</AzureCosmosDisableNewtonsoftJsonCheck>
 		<RootNamespace>Corner49.Infra</RootNamespace>
+		<Title>Corner49 Infra Azure Cosmos DB</Title>
+		<Authors>Frank Vanderlinden</Authors>
+		<Description>Opinionated repository layer for Azure Cosmos DB: automatic container creation, paging, bulk operations, change feed and RU monitoring. Part of the Corner49.Infra packages</Description>
+		<PackageTags>corner49;infrastructure;azure;cosmosdb;repository</PackageTags>
+		<PackageProjectUrl>https://github.com/FrankVDL2471/Corner49.Infra</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/FrankVDL2471/Corner49.Infra</RepositoryUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Update="README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.63.2" />

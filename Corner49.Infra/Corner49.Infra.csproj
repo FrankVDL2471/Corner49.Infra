@@ -7,7 +7,10 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>    <GenerateDocumentationFile>true</GenerateDocumentationFile>    <Title>Corner49 Infra</Title>
     <Authors>Frank Vanderlinden</Authors>
-    <Description>An opinionated set of infrastructure libraries for .Net applications </Description>
+    <Description>Opinionated bootstrap for ASP.NET Core web apps and APIs: configuration, logging, OpenAPI, Auth0, health checks, jobs, Cosmos DB, Service Bus and Blob Storage. The main package of the Corner49.Infra packages</Description>
+    <PackageTags>corner49;infrastructure;aspnetcore;azure</PackageTags>
+    <PackageProjectUrl>https://github.com/FrankVDL2471/Corner49.Infra</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/FrankVDL2471/Corner49.Infra</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 		<RootNamespace>Corner49.Infra</RootNamespace>
 

@@ -5,7 +5,21 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 		<RootNamespace>Corner49.Infra</RootNamespace>
+		<Title>Corner49 Infra Azure Service Bus</Title>
+		<Authors>Frank Vanderlinden</Authors>
+		<Description>Opinionated messaging on Azure Service Bus: auto-provisioned queues and topics, typed messages and hosted handlers. Part of the Corner49.Infra packages</Description>
+		<PackageTags>corner49;infrastructure;azure;servicebus;messaging</PackageTags>
+		<PackageProjectUrl>https://github.com/FrankVDL2471/Corner49.Infra</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/FrankVDL2471/Corner49.Infra</RepositoryUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Update="README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.2" />

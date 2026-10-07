@@ -5,8 +5,21 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 		<RootNamespace>Corner49.Infra</RootNamespace>
-
+		<Title>Corner49 Infra CLI</Title>
+		<Authors>Frank Vanderlinden</Authors>
+		<Description>Opinionated bootstrap for .NET console apps, workers and containerised jobs: configuration, logging, named jobs and System.CommandLine. Part of the Corner49.Infra packages</Description>
+		<PackageTags>corner49;infrastructure;cli;console;jobs</PackageTags>
+		<PackageProjectUrl>https://github.com/FrankVDL2471/Corner49.Infra</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/FrankVDL2471/Corner49.Infra</RepositoryUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Update="README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="8.6.0" />
