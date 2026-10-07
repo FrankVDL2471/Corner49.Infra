@@ -1,7 +1,5 @@
-﻿using Corner49.CLI;
-using Corner49.CosmosDB;
+﻿using Corner49.Infra;
 using Corner49.SampleCLI.Repos;
-using Corner49.ServiceBus;
 
 namespace Corner49.SampleCLI {
 	internal class Program {
@@ -17,12 +15,12 @@ namespace Corner49.SampleCLI {
 
 
 			infra.AddDocumentDB(bld => {
-					 bld.Configure = (cfg) => {
-						 cfg.DatabaseName = "dev-ottogusto";
-					 };
+				bld.Configure = (cfg) => {
+					cfg.DatabaseName = "dev-ottogusto";
+				};
 
-					 bld.AddRepo<IDataRepo, DataRepo>();
-				 });
+				bld.AddRepo<IDataRepo, DataRepo>();
+			});
 
 
 

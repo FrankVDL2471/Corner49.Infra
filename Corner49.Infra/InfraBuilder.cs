@@ -1,12 +1,11 @@
 ﻿using Auth0.AspNetCore.Authentication;
-using Corner49.Core;
-using Corner49.Core.Helpers;
 using Corner49.Infra.ApiKey;
 using Corner49.Infra.Auth;
 using Corner49.Infra.Health;
 using Corner49.Infra.Helpers;
 using Corner49.Infra.Jobs;
 using Corner49.Infra.Logging;
+using Corner49.Infra.Tools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.OpenApi;
@@ -111,8 +110,7 @@ namespace Corner49.Infra {
 				});
 
 				if (_loggingOptions.TrackActivity) {
-					_builder.Logging.Configure(options =>
-					{
+					_builder.Logging.Configure(options => {
 						options.ActivityTrackingOptions =
 								ActivityTrackingOptions.TraceId |
 								ActivityTrackingOptions.SpanId |

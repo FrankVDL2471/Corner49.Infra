@@ -1,6 +1,4 @@
-﻿using Corner49.FormBuilder;
-
-namespace Corner49.Sample.Models {
+﻿namespace Corner49.Sample.Models {
 	public class DataModel {
 
 
@@ -10,7 +8,7 @@ namespace Corner49.Sample.Models {
 
 		public string? Name { get; set; }
 
-		
+
 
 	}
 

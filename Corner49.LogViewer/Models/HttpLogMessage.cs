@@ -1,5 +1,4 @@
-﻿using Corner49.Infra.Tools;
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace Corner49.LogViewer.Models {
 	public class HttpLogMessage {

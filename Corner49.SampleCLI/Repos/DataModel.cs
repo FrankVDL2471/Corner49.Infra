@@ -9,7 +9,7 @@ namespace Corner49.SampleCLI.Repos {
 
 		public string? Name { get; set; }
 
-		
+
 
 	}
 

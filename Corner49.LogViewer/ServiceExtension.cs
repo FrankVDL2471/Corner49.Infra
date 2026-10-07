@@ -1,6 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.Extensions.DependencyInjection;
-using System.ComponentModel;
 
 namespace Corner49.LogViewer {
 	public static class ServiceExtension {

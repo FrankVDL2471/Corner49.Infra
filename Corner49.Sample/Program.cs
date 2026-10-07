@@ -1,12 +1,7 @@
 using Corner49.Infra;
 using Corner49.LogViewer;
-using Corner49.Sample.Handlers;
-using Corner49.Sample.Jobs;
 using Corner49.Sample.Messages;
 using Corner49.Sample.Repos;
-using Hangfire.Common;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Corner49.CosmosDB;
 
 public partial class Program {
 	private static async Task Main(string[] args) {
@@ -23,13 +18,13 @@ public partial class Program {
 
 
 
-	infra.AddDocumentDB(bld => {
-		bld.Configure = (cfg) => {
-			cfg.DatabaseName = "dev-ottogusto";
-		};
+		infra.AddDocumentDB(bld => {
+			bld.Configure = (cfg) => {
+				cfg.DatabaseName = "dev-ottogusto";
+			};
 
-		bld.AddRepo<IDataRepo, DataRepo>();
-	});
+			bld.AddRepo<IDataRepo, DataRepo>();
+		});
 
 		//infra.AddJobs();
 

@@ -1,6 +1,4 @@
-﻿using Corner49.Infra.Tools;
-using System.Diagnostics;
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace Corner49.LogViewer.Models {
 
@@ -18,7 +16,7 @@ namespace Corner49.LogViewer.Models {
 		public string? EventIpAddress { get; set; }
 
 
-		public LogMessage ? Create() {
+		public LogMessage? Create() {
 			if (this.ResultDescription?.StartsWith("{") == true) {
 				try {
 					var data = JsonSerializer.Deserialize<ConsoleLogData>(this.ResultDescription);
@@ -33,7 +31,7 @@ namespace Corner49.LogViewer.Models {
 					if (data.LogLevel == "Warning") msg.Level = Corner49.LogViewer.Models.LogLevel.Warn;
 
 					return msg;
-				} catch(Exception err) {
+				} catch (Exception err) {
 					return null;
 				}
 

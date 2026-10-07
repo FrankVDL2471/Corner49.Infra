@@ -1,5 +1,4 @@
-﻿using Corner49.Infra.Helpers;
-using Hangfire;
+﻿using Hangfire;
 using Hangfire.MemoryStorage;
 using Hangfire.SqlServer;
 using Microsoft.AspNetCore.Builder;

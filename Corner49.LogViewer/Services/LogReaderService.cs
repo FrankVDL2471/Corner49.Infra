@@ -1,14 +1,9 @@
 ﻿using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Corner49.Core.Helpers;
 using Corner49.Infra.Tools;
 using Corner49.LogViewer.Models;
-using Microsoft.Azure.Cosmos.Linq;
-using Microsoft.VisualBasic;
 using System.Collections.Concurrent;
-using System.Reflection.Metadata.Ecma335;
-using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace Corner49.LogViewer.Services {
@@ -156,7 +151,7 @@ namespace Corner49.LogViewer.Services {
 
 		private async IAsyncEnumerable<BlobItem> GetBlobs(string? prefix = null) {
 			foreach (var container in _containers) {
-				await foreach (var tree in container.GetBlobsByHierarchyAsync(new GetBlobsByHierarchyOptions {  Prefix = prefix})) {
+				await foreach (var tree in container.GetBlobsByHierarchyAsync(new GetBlobsByHierarchyOptions { Prefix = prefix })) {
 					yield return tree.Blob;
 				}
 			}

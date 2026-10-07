@@ -1,5 +1,4 @@
-﻿using Corner49.Core.Helpers;
-using Corner49.Infra.Tools;
+﻿using Corner49.Infra.Tools;
 using System.Text.Json;
 
 namespace Corner49.LogViewer.Models {
@@ -24,7 +23,7 @@ namespace Corner49.LogViewer.Models {
 					var data = JsonSerializer.Deserialize<FunctionLogData>(this.Properties.Replace("'", "\""), JsonHelper.Options);
 
 					var msg = new LogMessage {
-						Time = DateTime.ParseExact(this.Time, "MM/dd/yyyy HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),	
+						Time = DateTime.ParseExact(this.Time, "MM/dd/yyyy HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
 						Category = data.Category,
 						Message = data.Message
 					};

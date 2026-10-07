@@ -1,7 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
-using System.Text.Json.Serialization;
 
 namespace Corner49.SampleAPI.Controllers {
 	[Route("api/[controller]")]
@@ -47,9 +45,9 @@ namespace Corner49.SampleAPI.Controllers {
 
 	public class TestModel {
 
-		public int IntValue { get; set; }	
+		public int IntValue { get; set; }
 
-		public decimal DecimalValue { get; set; }	
+		public decimal DecimalValue { get; set; }
 
 		public string? StringValue { get; set; }
 

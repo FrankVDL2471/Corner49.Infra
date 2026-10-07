@@ -1,10 +1,10 @@
-﻿using Corner49.CosmosDB.DB;
+﻿using Corner49.Infra.DB;
 using Corner49.Sample.Models;
 
 
 namespace Corner49.Sample.Repos {
-	
-	public interface IDataRepo  {
+
+	public interface IDataRepo {
 
 		Task<DataModel?> GetItem(string pk, string id);
 
@@ -50,8 +50,8 @@ namespace Corner49.Sample.Repos {
 			return _repo.Query((string?)null, query);
 		}
 
-		public IAsyncEnumerable<Stream> Export(string? partitionKey, string sql,  int? maxCount) {
-			return _repo.StreamSQL(partitionKey, sql,	null, maxCount);
+		public IAsyncEnumerable<Stream> Export(string? partitionKey, string sql, int? maxCount) {
+			return _repo.StreamSQL(partitionKey, sql, null, maxCount);
 		}
 
 

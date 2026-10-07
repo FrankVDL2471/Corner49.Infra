@@ -25,12 +25,12 @@ namespace Corner49.SampleAPI {
 			//	 cfg.DbName = "jobs-dev-test";
 			// });
 
-//			infra = infra.AddServiceBus(cfg => {
-//				//cfg.DeveloperMode = true;
-////				cfg.IsBasicTier = true;
-//			});
+			//			infra = infra.AddServiceBus(cfg => {
+			//				//cfg.DeveloperMode = true;
+			////				cfg.IsBasicTier = true;
+			//			});
 
-//			infra.AddMessageHandler<TestMessage, TestMessageHandler>();
+			//			infra.AddMessageHandler<TestMessage, TestMessageHandler>();
 
 
 			//infra.AddServiceBusHandler<Handlers.MessageHandler>(cfg => {

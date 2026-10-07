@@ -52,10 +52,10 @@ namespace Corner49.FormBuilder.Builder {
 			} else if (prp.PropertyType.IsAssignableTo(typeof(double))) {
 				Type = "number";
 				Step = "0.01";
-			//} else if (prp.PropertyType.IsAssignableTo(typeof(decimal))) {
-			//	Type = "number";
-			//} else if (prp.PropertyType.IsAssignableTo(typeof(decimal?))) {
-			//	Type = "number";
+				//} else if (prp.PropertyType.IsAssignableTo(typeof(decimal))) {
+				//	Type = "number";
+				//} else if (prp.PropertyType.IsAssignableTo(typeof(decimal?))) {
+				//	Type = "number";
 			} else if (prp.PropertyType.IsAssignableTo(typeof(DateTime))) {
 				Type = "datetime";
 			} else if (prp.PropertyType.IsAssignableTo(typeof(DateTime?))) {
@@ -116,8 +116,8 @@ namespace Corner49.FormBuilder.Builder {
 					Type = "password";
 				} else if (dataTypeAttr.DataType == DataType.MultilineText) {
 					Type = "textarea";
-				//} else if (dataTypeAttr.DataType == DataType.Currency) {
-				//	Type = "number";
+					//} else if (dataTypeAttr.DataType == DataType.Currency) {
+					//	Type = "number";
 				} else if (dataTypeAttr.DataType == DataType.Upload) {
 					Type = "image";
 				}
@@ -377,17 +377,17 @@ namespace Corner49.FormBuilder.Builder {
 			if (modelState?.ContainsKey(Name) == true) {
 				state = modelState[Name];
 			}
-			
+
 
 			builder.OpenElement(0, "div");
 			builder.AddAttribute(1, "class", "form-group mb-3");
-			if (singleRow) builder.AddAttribute(2, "class", "row");	
+			if (singleRow) builder.AddAttribute(2, "class", "row");
 
 			builder.OpenElement(3, "label");
-			builder.AddAttribute(4, "class", "control-label");	
+			builder.AddAttribute(4, "class", "control-label");
 			builder.AddAttribute(5, "class", "col-sm-3");
 			builder.AddAttribute(6, "for", Name);
-			
+
 			string lbl = localizer.GetTranslation(FullName, Label ?? Name);
 			builder.AddContent(7, lbl);
 
@@ -423,9 +423,9 @@ namespace Corner49.FormBuilder.Builder {
 				builder.OpenElement(17, "select");
 			} else if (Type == "textarea") {
 				builder.OpenElement(18, "textarea");
-				builder.AddAttribute(19, "rows", "10");	
+				builder.AddAttribute(19, "rows", "10");
 			} else {
-				builder.OpenElement(20, "input");	
+				builder.OpenElement(20, "input");
 			}
 
 			if (singleRow) {
@@ -439,7 +439,7 @@ namespace Corner49.FormBuilder.Builder {
 				builder.AddAttribute(22, "class", "form-control");
 			}
 			if (state?.ValidationState == ModelValidationState.Invalid) {
-				builder.AddAttribute(23, "class", "input-validation-error");	
+				builder.AddAttribute(23, "class", "input-validation-error");
 			}
 			if (ReadOnly) {
 				builder.AddAttribute(24, "readonly");
@@ -453,10 +453,10 @@ namespace Corner49.FormBuilder.Builder {
 					builder.AddAttribute(26, "type", "file");
 					builder.AddAttribute(27, "accept", "image/png, image/jpeg");
 				} else {
-					builder.AddAttribute(28, "type", Type);					
+					builder.AddAttribute(28, "type", Type);
 				}
 			}
-			if (Step != null) builder.AddAttribute(29,"step", Step);
+			if (Step != null) builder.AddAttribute(29, "step", Step);
 
 			builder.AddAttribute(30, "data-val", "true");
 			builder.AddAttribute(31, $"data-val-{Name}", "Invalid value");
@@ -468,7 +468,7 @@ namespace Corner49.FormBuilder.Builder {
 					builder.OpenElement(33, "option");
 					builder.AddAttribute(34, "value", itm.Key == null ? string.Empty : itm.Key.ToString());
 					if (itm.Key == null && val == null) {
-						builder.AddAttribute(35, "selected", "");	
+						builder.AddAttribute(35, "selected", "");
 					} else if (val != null && itm.Key != null && itm.Key.GetType() == val.GetType()) {
 						if (itm.Key.Equals(val)) {
 							builder.AddAttribute(35, "selected", "");
@@ -486,7 +486,7 @@ namespace Corner49.FormBuilder.Builder {
 					} else if (val is DateTimeOffset dto) {
 						builder.AddAttribute(37, "value", dto.ToLocalTime().ToString("yyyy-MM-ddTHH:mm:ss"));
 					} else if (val != null) {
-						builder.AddAttribute(37, "value",val.ToString());
+						builder.AddAttribute(37, "value", val.ToString());
 					}
 				} else if (Type == "textarea") {
 					builder.AddContent(38, val as string);
@@ -502,14 +502,14 @@ namespace Corner49.FormBuilder.Builder {
 			}
 			string prompt = Placeholder ?? localizer.GetTranslation($"{FullName}.Prompt", null);
 			if (!string.IsNullOrEmpty(prompt)) {
-				builder.AddAttribute(42, "placeholder", prompt);	
+				builder.AddAttribute(42, "placeholder", prompt);
 			}
 			builder.CloseElement();
 
 			builder.OpenElement(43, "span");
 			builder.AddAttribute(44, "class", "text-danger field-validation-valid");
 			builder.AddAttribute(45, "data-valmsg-replace", "true");
-			builder.AddAttribute(46, "data-valmsg-for", Name);	
+			builder.AddAttribute(46, "data-valmsg-for", Name);
 
 			if (state?.Errors != null) {
 				string errMsg = string.Empty;
@@ -522,11 +522,11 @@ namespace Corner49.FormBuilder.Builder {
 			}
 
 			builder.CloseElement(); //close span
-			
+
 
 			if (!string.IsNullOrEmpty(description)) {
 				builder.OpenElement(48, "small");
-				builder.AddAttribute(49, "class", "form-text text-muted");	
+				builder.AddAttribute(49, "class", "form-text text-muted");
 				builder.AddAttribute(50, "id", Name + "_tooltip");
 				builder.AddContent(51, description);
 				builder.CloseElement();

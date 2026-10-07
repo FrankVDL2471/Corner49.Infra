@@ -1,6 +1,5 @@
 ﻿using Corner49.Infra.Messages;
-using Corner49.ServiceBus;
-using Corner49.ServiceBus.Bus;
+using Corner49.Infra.ServiceBus;
 
 namespace Corner49.SampleAPI.Handlers {
 	public class MessageHandler : IServiceBusHandler {
@@ -12,7 +11,7 @@ namespace Corner49.SampleAPI.Handlers {
 
 		public Task MessageReceived(ServiceBusCommand msg) {
 			_logger.LogInformation($"Message Received : {msg.Name}, source={msg.Source},target={msg.Target},timestamp={msg.Timestamp} ");
-			return Task.CompletedTask; 
+			return Task.CompletedTask;
 		}
 	}
 
@@ -23,11 +22,11 @@ namespace Corner49.SampleAPI.Handlers {
 	}
 
 	public class TestMessageHandler : MessageHandler<TestMessage> {
-		public TestMessageHandler(ILogger<TestMessageHandler> logger)  {
+		public TestMessageHandler(ILogger<TestMessageHandler> logger) {
 		}
 		public override Task<bool> Process(string action, TestMessage message) {
 			Console.WriteLine($"TestMessageHandler: {action}");
 			return Task.FromResult(true);
 		}
-	}	
+	}
 }

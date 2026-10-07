@@ -1,5 +1,4 @@
-﻿using Corner49.Core.Helpers;
-using Corner49.Infra.Tools;
+﻿using Corner49.Infra.Tools;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using System.Text.Json;

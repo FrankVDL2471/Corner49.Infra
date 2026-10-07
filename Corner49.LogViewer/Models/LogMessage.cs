@@ -6,9 +6,9 @@
 		public string? Category { get; set; }
 	}
 
-	public enum LogLevel { 
+	public enum LogLevel {
 		Info,
-		Warn, 
+		Warn,
 		Fail,
 		Crsh,
 	}

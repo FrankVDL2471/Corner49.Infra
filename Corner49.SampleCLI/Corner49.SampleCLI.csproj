@@ -13,9 +13,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Corner49.CLI\Corner49.CLI.csproj" />
-    <ProjectReference Include="..\Corner49.CosmosDB\Corner49.CosmosDB.csproj" />
-    <ProjectReference Include="..\Corner49.ServiceBus\Corner49.ServiceBus.csproj" />
+    <ProjectReference Include="..\Corner49.Infra.AzureCosmosDB\Corner49.Infra.AzureCosmosDB.csproj" />
+    <ProjectReference Include="..\Corner49.Infra.AzureServiceBus\Corner49.Infra.AzureServiceBus.csproj" />
+    <ProjectReference Include="..\Corner49.Infra.AzureStorage\Corner49.Infra.AzureStorage.csproj" />
+    <ProjectReference Include="..\Corner49.Infra.CLI\Corner49.Infra.CLI.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
+using Corner49.Infra.Storage;
 using Corner49.Sample.Models;
 using Corner49.Sample.Repos;
 using Corner49.Sample.Services;
-using Corner49.Storage;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 
@@ -42,8 +42,7 @@ namespace Corner49.Sample.Controllers {
 
 
 
-		public async Task<IActionResult> Test() 
-			{
+		public async Task<IActionResult> Test() {
 
 
 			await foreach (var data in _dataRepo.Export(null, "select * from c", 10)) {

@@ -101,7 +101,7 @@ namespace Corner49.FormBuilder.Builder {
 			fld.SelectOptions = new List<KeyValuePair<object, string>>();
 			if (addEmpty) fld.SelectOptions.Add(new KeyValuePair<object, string>(null, string.Empty));
 
-			foreach(var key in Enum.GetNames(enumType)) {
+			foreach (var key in Enum.GetNames(enumType)) {
 				var val = Enum.Parse(enumType, key);
 				fld.SelectOptions.Add(new KeyValuePair<object, string>(val, key));
 			}
@@ -155,9 +155,9 @@ namespace Corner49.FormBuilder.Builder {
 			int width = options?.ColumnWidth ?? (int)(12 / lst.Count);
 
 			List<IHtmlContent> arr = new List<IHtmlContent>();
-			foreach(var fld in lst.OrderBy(f => f.Order)) {
+			foreach (var fld in lst.OrderBy(f => f.Order)) {
 				if (options?.ColumnsSizes != null) {
-					options.ColumnWidth = (idx < options?.ColumnsSizes?.Length) ? options.ColumnsSizes[idx] :width;
+					options.ColumnWidth = (idx < options?.ColumnsSizes?.Length) ? options.ColumnsSizes[idx] : width;
 				}
 				arr.Add(fld.Generate(_getValue.Invoke(fld), _html.ViewContext.ModelState, localizer, options));
 				idx++;
@@ -194,12 +194,13 @@ namespace Corner49.FormBuilder.Builder {
 				lst.Add(fld);
 			}
 
-		
+
 
 			var localizer = new FormLocalizer(null, null, _viewLocalizer);
-			foreach(var fld in lst.OrderBy(f => f.Order)) {
+			foreach (var fld in lst.OrderBy(f => f.Order)) {
 				fld.Render(_builder, _getValue.Invoke(fld), null, localizer, singleRow);
-			};
+			}
+			;
 
 		}
 

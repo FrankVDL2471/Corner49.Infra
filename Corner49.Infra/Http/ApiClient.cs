@@ -249,7 +249,7 @@ namespace Corner49.Infra.Http {
 			try {
 				respData = await resp.Content.ReadAsStringAsync();
 				sw.Stop();
-				this.OnRequest("POST", path, data, respData, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds	);
+				this.OnRequest("POST", path, data, respData, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds);
 
 				if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 				var rtrn = JsonSerializer.Deserialize<T>(respData, _options);
@@ -298,7 +298,7 @@ namespace Corner49.Infra.Http {
 			var client = await this.GetClient();
 			using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 			try {
-				sw.Stop();				
+				sw.Stop();
 				this.OnRequest("POST", path, null, null, resp.IsSuccessStatusCode, sw.ElapsedMilliseconds);
 				if (this.EnsureSuccessStatusCode) resp.EnsureSuccessStatusCode();
 			} catch (HttpRequestException hre) {

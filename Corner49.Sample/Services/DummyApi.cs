@@ -5,7 +5,7 @@ namespace Corner49.Sample.Services {
 	public class DummyApi : ApiClient {
 		public DummyApi() : base("https://dummyjson.com", false, opt => {
 			opt.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
-			opt.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;	
+			opt.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 		}) {
 		}
 
@@ -17,7 +17,7 @@ namespace Corner49.Sample.Services {
 
 		public Task<DummyResponse?> Test() {
 			return base.Get<DummyResponse>("/test");
-		}	
+		}
 
 	}
 
@@ -25,7 +25,7 @@ namespace Corner49.Sample.Services {
 	public class DummyResponse {
 
 		public string? Status { get; set; }
-		public string? Method { get; set;  }
+		public string? Method { get; set; }
 
 	}
 }
