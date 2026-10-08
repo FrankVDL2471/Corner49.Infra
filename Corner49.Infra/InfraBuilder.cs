@@ -400,30 +400,6 @@ namespace Corner49.Infra {
 
 		#endregion
 
-		#region Jobs
-
-		private JobBuilder _jobs = null;
-
-		public InfraBuilder AddJobs(Action<JobBuilder>? builder, Action<JobConfig>? config = null) {
-			JobConfig cfg = new JobConfig();
-			cfg.ConnectString = this.Configuration["CosmosDB:ConnectString"];
-			cfg.DbName = this.Configuration["CosmosDB:DBName"];
-			cfg.ContainerName = "jobs";
-			cfg.EnableDashboard = true;
-			if (config != null) config(cfg);
-
-			_jobs = new JobBuilder(Services, cfg);
-			if (builder != null) {
-				builder(_jobs);
-			}
-			return this;
-		}
-
-
-
-
-		#endregion
-
 
 		#region Sessions
 
@@ -531,7 +507,7 @@ namespace Corner49.Infra {
 			}
 			if (_corsPolicy != null) app.UseCors(_corsPolicy);
 
-			if (_jobs != null) _jobs.UseDashboard(app, _appName);
+			//if (_jobs != null) _jobs.UseDashboard(app, _appName);
 
 			if (_auth != null) {
 				app.UseAuthentication();
