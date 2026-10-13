@@ -10,5 +10,7 @@ namespace Corner49.Infra {
 		IConfigurationManager Configuration { get; }
 
 		IInfraBuilder AddExtension(InfraExtension extension);
+
+		Task BuildAndRun();
 	}
 }
