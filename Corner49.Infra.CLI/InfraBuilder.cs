@@ -28,8 +28,10 @@ namespace Corner49.Infra {
 		}
 
 
+		private static string[]? _args;
 		public static InfraBuilder Create(string name, params string[] args) {
 			var builder = Host.CreateApplicationBuilder(args);
+			_args = args;
 
 			return builder.UseInfra(name);
 		}
@@ -109,6 +111,12 @@ namespace Corner49.Infra {
 
 		public static bool IsLocalEnvironment => Debugger.IsAttached || Environment.GetEnvironmentVariable("IsLocalEnv") == "True";
 
+		string IInfraBuilder.Name => throw new NotImplementedException();
+
+		IServiceCollection IInfraBuilder.Services => throw new NotImplementedException();
+
+		IConfigurationManager IInfraBuilder.Configuration => throw new NotImplementedException();
+
 		public static bool IsDevelopment(string environment) {
 			return "Development".Equals(environment, StringComparison.OrdinalIgnoreCase);
 		}
@@ -167,6 +175,11 @@ namespace Corner49.Infra {
 		#endregion
 
 
+		Task IInfraBuilder.BuildAndRun() {
+			return BuildAndRun(_args ?? new string[] { });
+		}
+
+
 		public async Task BuildAndRun(params string[] args) {
 			if (_builder is HostApplicationBuilder host) {
 				foreach (var ext in _extensions) {
@@ -214,11 +227,9 @@ namespace Corner49.Infra {
 
 		}
 
-
-
-
-
-
+		IInfraBuilder IInfraBuilder.AddExtension(InfraExtension extension) {
+			throw new NotImplementedException();
+		}
 
 	}
 }
