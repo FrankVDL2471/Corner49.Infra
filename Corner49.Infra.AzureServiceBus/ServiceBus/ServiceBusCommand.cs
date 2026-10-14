@@ -11,6 +11,12 @@ namespace Corner49.Infra.ServiceBus {
 		/// </summary>
 		public string? MessageId { get; set; }
 
+
+		/// <summary>
+		/// Group id for ordered processing (mapped to ServiceBusMessage.SessionId)
+		/// </summary>
+		public string? SessionId { get; set; }
+
 		/// <summary>
 		/// Command to execute (mapped to ServiceBusMessage.subject)
 		/// </summary>

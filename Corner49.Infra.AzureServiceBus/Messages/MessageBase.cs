@@ -16,8 +16,8 @@
 		public string Action { get; set; }
 
 
-		public virtual string GetMessageId() {
-			return null;
-		}
+		public virtual string? GetMessageId() {	return null; }
+
+		public virtual string? GetSessionId() { return null; }
 	}
 }

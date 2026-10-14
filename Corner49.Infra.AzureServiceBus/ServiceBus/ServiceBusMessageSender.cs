@@ -120,8 +120,11 @@ namespace Corner49.Infra.ServiceBus {
 			if ((_developerMode) && (cmd.Target == null)) {
 				cmd.Target = System.Environment.MachineName;
 			}
+			
+			
 
 			if (cmd.MessageId != null) msg.MessageId = cmd.MessageId;
+			if (cmd.SessionId != null) msg.SessionId = cmd.SessionId;
 			if (cmd.Source != null) msg.ApplicationProperties.Add("Source", cmd.Source);
 			if (cmd.Target != null) msg.ApplicationProperties.Add("Target", cmd.Target);
 			if (cmd.Timestamp != null) msg.ApplicationProperties.Add("Timestamp", cmd.Timestamp.Value.ToUnixTimeMilliseconds().ToString());

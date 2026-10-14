@@ -86,7 +86,7 @@ namespace Corner49.Infra.ServiceBus {
 
 
 		public async Task<ServiceBusProcessor> GetQueue(IServiceBusOptions options) {
-			var nm = await GetQueue(options.Name, options.DuplicateDetectionWindow);
+			var nm = await GetQueue(options.Name, options.DuplicateDetectionWindow, options.EnableSessions);
 
 			ServiceBusProcessorOptions opt = new ServiceBusProcessorOptions();
 			opt.MaxConcurrentCalls = options.MaxConcurrentCalls;
@@ -99,7 +99,7 @@ namespace Corner49.Infra.ServiceBus {
 			}
 			return _client.CreateProcessor(nm, opt);
 		}
-		private async ValueTask<string> GetQueue(string name, TimeSpan? dupplicateDetection = null) {
+		private async ValueTask<string> GetQueue(string name, TimeSpan? dupplicateDetection = null, bool enableSessions = false) {
 			string queueName = name.ToLower();
 			if (this.DeveloperMode) {
 				queueName += "." + Environment.MachineName.ToLower();
@@ -135,6 +135,7 @@ namespace Corner49.Infra.ServiceBus {
 							opt.RequiresDuplicateDetection = false;
 						}
 
+						opt.RequiresSession = enableSessions;
 
 						var resp = await _admin.CreateQueueAsync(opt);
 						_knownQueues.Add(queueName.ToLower());
@@ -285,7 +286,7 @@ namespace Corner49.Infra.ServiceBus {
 			}
 		}
 
-		private async ValueTask<string> GetSubscription(string topicName, string subscriptionName, string? subscriptionFilter = null) {
+		private async ValueTask<string> GetSubscription(string topicName, string subscriptionName, string? subscriptionFilter = null, bool enableSessions = false) {
 			if (_config.DeveloperMode) {
 				subscriptionName += "." + Environment.MachineName.ToLower();
 				subscriptionName = subscriptionName.Length > 50 ? subscriptionName.Substring(0, 50) : subscriptionName;
@@ -340,6 +341,7 @@ namespace Corner49.Infra.ServiceBus {
 					opt.MaxDeliveryCount = _config.MaxDeliveryCount;
 					opt.LockDuration = TimeSpan.FromMinutes(5);
 					opt.DeadLetteringOnMessageExpiration = true;
+					opt.RequiresSession = enableSessions;
 
 					if (subscriptionFilter != null) {
 						var resp = await _admin.CreateSubscriptionAsync(opt, new CreateRuleOptions { Filter = new SqlRuleFilter(subscriptionFilter) });
@@ -363,7 +365,7 @@ namespace Corner49.Infra.ServiceBus {
 
 		public async Task<ServiceBusProcessor> GetSubscription(IServiceBusOptions options) {
 			var topic = await GetTopic(options.Name, true, options.DuplicateDetectionWindow);
-			var sub = await GetSubscription(topic, options.SubscriptionName, options.SubscriptionFilter);
+			var sub = await GetSubscription(topic, options.SubscriptionName, options.SubscriptionFilter, options.EnableSessions);
 
 			ServiceBusProcessorOptions opt = new ServiceBusProcessorOptions();
 			opt.MaxConcurrentCalls = options.MaxConcurrentCalls;

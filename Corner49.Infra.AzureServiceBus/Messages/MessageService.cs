@@ -84,10 +84,9 @@ namespace Corner49.Infra.Messages {
 			cmd.SetData((object)msg);
 			cmd.Timestamp = enqueueTime;
 
-			var msgId = msg.GetMessageId();
-			if (msgId != null) {
-				cmd.MessageId = msgId;
-			}
+			cmd.MessageId = msg.GetMessageId();
+			cmd.SessionId = msg.GetSessionId();
+
 			return cmd;
 		}
 	}

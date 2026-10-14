@@ -64,6 +64,8 @@ namespace Corner49.Infra {
 		bool TrackMessageCount { get; set; }
 
 		bool DealLetter { get; set; }
+
+		bool EnableSessions { get; set; }
 	}
 
 	public class ServiceBusOptions : IServiceBusOptions {
@@ -74,6 +76,7 @@ namespace Corner49.Infra {
 			this.MaxConcurrentCalls = 30;
 			this.SubscriptionFilter = null;
 			this.DealLetter = false;
+			this.EnableSessions = false;
 		}
 
 		public ServiceBusKind Kind { get; set; }
@@ -95,6 +98,8 @@ namespace Corner49.Infra {
 		public bool TrackMessageCount { get; set; }
 
 		public bool DealLetter { get; set; }
+
+		public bool EnableSessions { get; set; }
 	}
 
 }
