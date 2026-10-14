@@ -36,7 +36,7 @@ namespace Corner49.Infra {
 			_infra.Services.AddSingleton<IMessageService<T>, S>();
 		}
 
-		public void AddMessageHandler<T, H>(int? maxConcurrentCalls = null) where T : MessageBase where H : MessageHandler<T> {
+		public void AddMessageHandler<T, H>(int? maxConcurrentCalls = null, bool enableSessions = false) where T : MessageBase where H : MessageHandler<T> {
 			var msg = Activator.CreateInstance<T>();
 			this.AddServiceBusHandler<H>((opt) => {
 				opt.Name = msg.Name;
@@ -52,6 +52,7 @@ namespace Corner49.Infra {
                 opt.MaxConcurrentCalls = maxConcurrentCalls ?? 10;
 #endif
 				opt.DuplicateDetectionWindow = TimeSpan.FromSeconds(30);
+				opt.EnableSessions = enableSessions;
 			});
 		}
 
