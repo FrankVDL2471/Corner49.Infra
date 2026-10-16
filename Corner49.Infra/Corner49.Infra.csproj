@@ -32,11 +32,7 @@
     <PackageReference Include="SkiaSharp" Version="4.151.1" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Corner49.Infra.AzureCosmosDB\Corner49.Infra.AzureCosmosDB.csproj" />
-    <ProjectReference Include="..\Corner49.Infra.AzureServiceBus\Corner49.Infra.AzureServiceBus.csproj" />
-    <ProjectReference Include="..\Corner49.Infra.AzureStorage\Corner49.Infra.AzureStorage.csproj" />
     <ProjectReference Include="..\Corner49.Infra.Core\Corner49.Infra.Core.csproj" />
-    <ProjectReference Include="..\Corner49.Infra.Hangfire\Corner49.Infra.Hangfire.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="README.md">
