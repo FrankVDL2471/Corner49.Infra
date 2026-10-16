@@ -12,6 +12,10 @@
     <PackageReference Include="OpenTelemetry.Api" Version="1.18.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Corner49.Infra.AzureCosmosDB\Corner49.Infra.AzureCosmosDB.csproj" />
+    <ProjectReference Include="..\Corner49.Infra.AzureServiceBus\Corner49.Infra.AzureServiceBus.csproj" />
+    <ProjectReference Include="..\Corner49.Infra.AzureStorage\Corner49.Infra.AzureStorage.csproj" />
+    <ProjectReference Include="..\Corner49.Infra.Hangfire\Corner49.Infra.Hangfire.csproj" />
     <ProjectReference Include="..\Corner49.Infra\Corner49.Infra.csproj" />
   </ItemGroup>
 </Project>
