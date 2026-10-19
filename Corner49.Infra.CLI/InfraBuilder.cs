@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Diagnostics;
 using System.Text.Json;
 
@@ -150,8 +151,6 @@ namespace Corner49.Infra {
 
 			_jobs.Add(jobName, description ?? string.Empty);
 
-			_services.AddKeyedSingleton<IJob, T>(jobName.ToLowerInvariant());
-
 
 			return this;
 		}
@@ -217,6 +216,7 @@ namespace Corner49.Infra {
 						if (jobService == null) {
 							Console.Error.WriteLine($"Job '{job}' not found.");
 						} else {
+							
 							await jobService.Execute(args);
 						}
 					}

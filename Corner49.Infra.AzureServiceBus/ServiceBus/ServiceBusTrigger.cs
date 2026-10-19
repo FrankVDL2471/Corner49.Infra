@@ -81,6 +81,7 @@ namespace Corner49.Infra.ServiceBus {
 			ServiceBusReceivedMessage message = arg.Message;
 			var cmd = ServiceBusCommand.GetCommand(arg);
 
+			
 
 			if (_options.TrackMessageCount) {
 				cmd.MessageCount = await _serviceBus.GetMessageCount(_options);

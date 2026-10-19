@@ -2,6 +2,7 @@
 using Azure.Messaging.ServiceBus.Administration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Runtime.CompilerServices;
 
 namespace Corner49.Infra.ServiceBus {
 
@@ -13,6 +14,9 @@ namespace Corner49.Infra.ServiceBus {
 		ServiceBusMessageSender GetQueueSender(string queueName, TimeSpan? duplicateDetection = null);
 		ServiceBusMessageSender GetTopicSender(string queueName, TimeSpan? duplicateDetection = null);
 
+
+
+		IAsyncEnumerable<ServiceBusCommand> ReadMessages(IServiceBusOptions options, [EnumeratorCancellation] CancellationToken cancellationToken = default);
 
 		Task<ServiceBusProcessor> GetProcessor(IServiceBusOptions options);
 		Task<ServiceBusProcessor> GetQueue(IServiceBusOptions options);
@@ -54,6 +58,26 @@ namespace Corner49.Infra.ServiceBus {
 
 		public bool DeveloperMode => _config.DeveloperMode;
 
+
+
+		public async IAsyncEnumerable<ServiceBusCommand> ReadMessages(IServiceBusOptions options, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+			var receiverOptions = new ServiceBusReceiverOptions {
+				ReceiveMode = ServiceBusReceiveMode.PeekLock,
+				PrefetchCount = options.PrefetchCount
+			};
+
+
+			var receiver = options.Kind == ServiceBusKind.Queue ? _client.CreateReceiver(options.Name, receiverOptions) : _client.CreateReceiver(options.Name, options.SubscriptionName, receiverOptions);
+			while (true) {
+				var msg = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(5), cancellationToken);
+				if (msg == null) break;
+
+				var cmd = ServiceBusCommand.GetCommand(msg);
+				yield return cmd;
+			}
+			await receiver.DisposeAsync();
+		}
+
 		public async Task<ServiceBusProcessor> StartProcessor(IServiceBusOptions options, Func<ProcessMessageEventArgs, Task> processMessage, Func<ProcessErrorEventArgs, Task> processErrors) {
 
 			string? connString = options.ConnectString ?? _config.ConnectString;
@@ -78,6 +102,9 @@ namespace Corner49.Infra.ServiceBus {
 		public Task<ServiceBusProcessor> GetProcessor(IServiceBusOptions options) {
 			return (options.Kind == ServiceBusKind.Topic) ? GetSubscription(options) : GetQueue(options);
 		}
+
+
+
 
 		#region Queues
 
