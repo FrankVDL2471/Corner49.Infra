@@ -16,7 +16,7 @@ namespace Corner49.Infra.ServiceBus {
 
 
 
-		IAsyncEnumerable<ServiceBusCommand> ReadMessages(IServiceBusOptions options, [EnumeratorCancellation] CancellationToken cancellationToken = default);
+		Task ReadMessages(IServiceBusOptions options, Func<ServiceBusCommand, Task<bool>> processCommand, CancellationToken cancellationToken = default);
 
 		Task<ServiceBusProcessor> GetProcessor(IServiceBusOptions options);
 		Task<ServiceBusProcessor> GetQueue(IServiceBusOptions options);
@@ -60,25 +60,36 @@ namespace Corner49.Infra.ServiceBus {
 
 
 
-		public async IAsyncEnumerable<ServiceBusCommand> ReadMessages(IServiceBusOptions options, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+		public async Task ReadMessages(IServiceBusOptions options, Func<ServiceBusCommand, Task<bool>> processCommand, CancellationToken cancellationToken = default) {
 			var receiverOptions = new ServiceBusReceiverOptions {
 				ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete,
 				PrefetchCount = options.PrefetchCount
 			};
 
 			var receiver = options.Kind == ServiceBusKind.Queue ? _client.CreateReceiver(options.Name, receiverOptions) : _client.CreateReceiver(options.Name, options.SubscriptionName, receiverOptions);
-			while (true) {
-				ServiceBusCommand? cmd = null;
+			while (!cancellationToken.IsCancellationRequested) {
 				try {
 					var msg = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(options.WaitTime), cancellationToken);
 					if (msg == null) break;
 
-					cmd = ServiceBusCommand.GetCommand(msg);
-					
-				} catch(Exception err) {
+					var cmd = ServiceBusCommand.GetCommand(msg);
+
+					try {
+						if (await processCommand.Invoke(cmd)) {
+							await receiver.CompleteMessageAsync(msg, cancellationToken);
+						} else {
+							await receiver.DeadLetterMessageAsync(msg, "ProcessCommand returned false", null, cancellationToken);
+						}
+					} catch (Exception err) {
+						_logger.LogError(err, "ProcessCommand failed : {err}", err.Message);
+						await receiver.DeadLetterMessageAsync(msg, "ProcessCommand failed", err.Message, cancellationToken);
+					}
+
+				} catch (Exception err) {
 					_logger.LogError(err, "RecieveMessage failed : {err}", err.Message);
 				}
-				if (cmd != null) yield return cmd!;
+
+
 			}
 			await receiver.DisposeAsync();
 		}
