@@ -143,7 +143,7 @@ namespace Corner49.Infra {
 			if (_jobs.ContainsKey(jobName)) throw new InvalidOperationException($"Job '{jobName}' already registered.");
 
 			_jobs.Add(jobName, description ?? string.Empty);
-
+			_services.AddKeyedSingleton<T>(jobName);	
 
 			return this;
 		}
