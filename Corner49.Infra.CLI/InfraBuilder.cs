@@ -33,7 +33,6 @@ namespace Corner49.Infra {
 		public static InfraBuilder Create(string name, params string[] args) {
 			var builder = Host.CreateApplicationBuilder(args);
 			_args = args;
-
 			return builder.UseInfra(name);
 		}
 
@@ -41,7 +40,7 @@ namespace Corner49.Infra {
 
 		public static InfraBuilderInstance Instance { get; private set; } = new InfraBuilderInstance();
 
-		public IConfigurationManager Configuration => _builder.Configuration;
+		public IConfigurationManager Configuration { get => _builder.Configuration; }
 
 		public IServiceCollection Services { get => _services; }
 
