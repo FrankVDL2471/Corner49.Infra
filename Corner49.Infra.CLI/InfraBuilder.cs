@@ -136,13 +136,17 @@ namespace Corner49.Infra {
 
 		#region Jobs 
 
-		private Dictionary<string, string>? _jobs = null;
+		private Dictionary<string, JobInfo>? _jobs = null;
 
 		public InfraBuilder AddJob<T>(string jobName, string? description = null) where T : class, IJob {
-			if (_jobs == null) _jobs = new Dictionary<string, string>();
+			if (_jobs == null) _jobs = new Dictionary<string, JobInfo>();
 			if (_jobs.ContainsKey(jobName.ToLowerInvariant())) throw new InvalidOperationException($"Job '{jobName}' already registered.");
 
-			_jobs.Add(jobName.ToLowerInvariant(), description ?? string.Empty);
+			_jobs.Add(jobName.ToLowerInvariant(), new JobInfo {
+				Name = jobName,
+				Description = description,
+				ServiceType = typeof(T)
+			});
 			_builder.Services.AddKeyedSingleton<T>(jobName.ToLowerInvariant());
 
 			return this;
@@ -204,13 +208,13 @@ namespace Corner49.Infra {
 
 
 					} else {
-						string job = args.First().ToLowerInvariant();
-						if (!_jobs.ContainsKey(job)) {
-							Console.Error.WriteLine($"Job '{job}' not registered.");
+						string jobName = args.First().ToLowerInvariant();
+						if (!_jobs.ContainsKey(jobName)) {
+							Console.Error.WriteLine($"Job '{jobName}' not registered.");
 						} else {
-							var jobService = app.Services.GetKeyedService<IJob>(job);
+							var jobService = app.Services.GetKeyedService(_jobs[jobName].ServiceType, jobName) as IJob;
 							if (jobService == null) {
-								Console.Error.WriteLine($"Job '{job}' not found.");
+								Console.Error.WriteLine($"Job '{jobName}' not found.");
 							} else {
 
 								await jobService.Execute(args);
