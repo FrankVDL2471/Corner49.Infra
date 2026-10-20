@@ -21,13 +21,14 @@ namespace Corner49.SampleCLI {
 
 				bld.AddRepo<IDataRepo, DataRepo>();
 			});
+			infra.AddServiceBus(c => { });
 
 			infra.Addservices();
-
 
 			infra.AddJob<Jobs.HelloWorldJob>("Hello", "Print hello world in the console");
 			infra.AddJob<Jobs.ListPartsJob>("Parts", "List all parts in the database");
 
+			infra.AddJob<Jobs.GtmLookup>("GtmLookup", "Check the GTM lookup service bus queue");
 
 
 

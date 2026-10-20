@@ -70,7 +70,10 @@ namespace Corner49.Infra.ServiceBus {
 			while (!cancellationToken.IsCancellationRequested) {
 				try {
 					var msg = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(options.WaitTime), cancellationToken);
-					if (msg == null) break;
+					if (msg == null) {
+						_logger.LogInformation("No Message received in {waitTime} seconds from {name}", options.WaitTime, options.Name);
+						break;
+					}
 
 					var cmd = ServiceBusCommand.GetCommand(msg);
 
