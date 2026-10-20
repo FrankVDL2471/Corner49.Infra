@@ -1,5 +1,7 @@
 ﻿#nullable enable
 
+using System.ComponentModel;
+
 namespace Corner49.Infra {
 
 
@@ -60,6 +62,12 @@ namespace Corner49.Infra {
 		/// </summary>
 		int PrefetchCount { get; set; }
 
+		/// <summary>
+		/// Number of seconds to wait to read a message
+		/// Default = 15
+		/// </summary>
+		[DefaultValue(15)]
+		int WaitTime { get; set; }
 
 		bool TrackMessageCount { get; set; }
 
@@ -74,6 +82,7 @@ namespace Corner49.Infra {
 			this.SubscriptionName = subscriptionName;
 			this.Kind = ServiceBusKind.Queue;
 			this.MaxConcurrentCalls = 30;
+			this.WaitTime = 15;
 			this.SubscriptionFilter = null;
 			this.DealLetter = false;
 			this.EnableSessions = false;
@@ -94,6 +103,8 @@ namespace Corner49.Infra {
 		public TimeSpan? DuplicateDetectionWindow { get; set; }
 
 		public int PrefetchCount { get; set; }
+
+		public int WaitTime { get; set; }
 
 		public bool TrackMessageCount { get; set; }
 

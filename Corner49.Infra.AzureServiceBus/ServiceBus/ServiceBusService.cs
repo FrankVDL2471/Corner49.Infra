@@ -62,18 +62,23 @@ namespace Corner49.Infra.ServiceBus {
 
 		public async IAsyncEnumerable<ServiceBusCommand> ReadMessages(IServiceBusOptions options, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
 			var receiverOptions = new ServiceBusReceiverOptions {
-				ReceiveMode = ServiceBusReceiveMode.PeekLock,
+				ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete,
 				PrefetchCount = options.PrefetchCount
 			};
 
-
 			var receiver = options.Kind == ServiceBusKind.Queue ? _client.CreateReceiver(options.Name, receiverOptions) : _client.CreateReceiver(options.Name, options.SubscriptionName, receiverOptions);
 			while (true) {
-				var msg = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(5), cancellationToken);
-				if (msg == null) break;
+				ServiceBusCommand? cmd = null;
+				try {
+					var msg = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(options.WaitTime), cancellationToken);
+					if (msg == null) break;
 
-				var cmd = ServiceBusCommand.GetCommand(msg);
-				yield return cmd;
+					cmd = ServiceBusCommand.GetCommand(msg);
+					
+				} catch(Exception err) {
+					_logger.LogError(err, "RecieveMessage failed : {err}", err.Message);
+				}
+				if (cmd != null) yield return cmd!;
 			}
 			await receiver.DisposeAsync();
 		}
