@@ -111,12 +111,6 @@ namespace Corner49.Infra {
 
 		public static bool IsLocalEnvironment => Debugger.IsAttached || Environment.GetEnvironmentVariable("IsLocalEnv") == "True";
 
-		string IInfraBuilder.Name => throw new NotImplementedException();
-
-		IServiceCollection IInfraBuilder.Services => throw new NotImplementedException();
-
-		IConfigurationManager IInfraBuilder.Configuration => throw new NotImplementedException();
-
 		public static bool IsDevelopment(string environment) {
 			return "Development".Equals(environment, StringComparison.OrdinalIgnoreCase);
 		}
@@ -226,9 +220,6 @@ namespace Corner49.Infra {
 
 		}
 
-		IInfraBuilder IInfraBuilder.AddExtension(InfraExtension extension) {
-			throw new NotImplementedException();
-		}
 
 	}
 }

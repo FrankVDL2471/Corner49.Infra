@@ -22,7 +22,7 @@ namespace Corner49.SampleCLI {
 				bld.AddRepo<IDataRepo, DataRepo>();
 			});
 
-
+			infra.Addservices();
 
 
 			infra.AddJob<Jobs.HelloWorldJob>("Hello", "Print hello world in the console");
@@ -35,4 +35,6 @@ namespace Corner49.SampleCLI {
 
 		}
 	}
+
+	
 }
