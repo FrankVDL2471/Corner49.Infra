@@ -16,6 +16,7 @@ namespace Corner49.Infra {
 
 		public string? Topic { get; set; }
 		public string? Subscription { get; set; }	
+		public int PrefetchCount { get; set; } = 0;
 
 
 		public async Task Execute(string[]? args = null, CancellationToken cancellationToken = default) {
@@ -36,13 +37,14 @@ namespace Corner49.Infra {
 				throw new ArgumentException("Queue or Topic must be specified.");
 			}
 
+			options.PrefetchCount = this.PrefetchCount;
 
-			await foreach(var cmd in _serviceBus.ReadMessages(options, cancellationToken)) {
-				await Run(cmd, cancellationToken);
-			}
+			await _serviceBus.ReadMessages(options, (cmd) => {
+				return this.Run(cmd, cancellationToken);
+			});
 		}
 
 		
-		protected abstract Task Run(ServiceBusCommand command, CancellationToken cancellationToken = default);
+		protected abstract Task<bool> Run(ServiceBusCommand command, CancellationToken cancellationToken = default);
 	}
 }
