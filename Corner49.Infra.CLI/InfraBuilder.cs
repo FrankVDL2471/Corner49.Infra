@@ -140,10 +140,10 @@ namespace Corner49.Infra {
 
 		public InfraBuilder AddJob<T>(string jobName, string? description = null) where T : class, IJob {
 			if (_jobs == null) _jobs = new Dictionary<string, string>();
-			if (_jobs.ContainsKey(jobName)) throw new InvalidOperationException($"Job '{jobName}' already registered.");
+			if (_jobs.ContainsKey(jobName.ToLowerInvariant())) throw new InvalidOperationException($"Job '{jobName}' already registered.");
 
-			_jobs.Add(jobName, description ?? string.Empty);
-			_services.AddKeyedSingleton<T>(jobName);	
+			_jobs.Add(jobName.ToLowerInvariant(), description ?? string.Empty);
+			_builder.Services.AddKeyedSingleton<T>(jobName.ToLowerInvariant());
 
 			return this;
 		}
@@ -205,12 +205,16 @@ namespace Corner49.Infra {
 
 					} else {
 						string job = args.First().ToLowerInvariant();
-						var jobService = app.Services.GetKeyedService<IJob>(job);
-						if (jobService == null) {
-							Console.Error.WriteLine($"Job '{job}' not found.");
+						if (!_jobs.ContainsKey(job)) {
+							Console.Error.WriteLine($"Job '{job}' not registered.");
 						} else {
-							
-							await jobService.Execute(args);
+							var jobService = app.Services.GetKeyedService<IJob>(job);
+							if (jobService == null) {
+								Console.Error.WriteLine($"Job '{job}' not found.");
+							} else {
+
+								await jobService.Execute(args);
+							}
 						}
 					}
 				} else {
