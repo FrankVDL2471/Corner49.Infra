@@ -1,9 +1,12 @@
-﻿using Corner49.Infra.Tools;
+﻿using Azure;
+using Corner49.Infra.Models;
+using Corner49.Infra.Tools;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using static Microsoft.Azure.Cosmos.Container;
 
 namespace Corner49.Infra.DB {
 
@@ -380,7 +383,7 @@ namespace Corner49.Infra.DB {
 		/// <param name="parameters">Query parameters.</param>
 		/// <param name="cancelToken">Cancellation token.</param>
 		/// <returns>Continuation token for next page.</returns>
-		Task<string?> ReadSQL(string[]? partitionKey, string sql,  Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
+		Task<string?> ReadSQL(string[]? partitionKey, string sql, Func<T, Task<bool>> onRead, string? continuationToken = null, int? maxItemCount = null, Dictionary<string, object>? parameters = null, CancellationToken cancelToken = default);
 
 		/// <summary>
 		/// Counts documents matching a WHERE clause condition.
@@ -406,7 +409,7 @@ namespace Corner49.Infra.DB {
 		/// WARNING: This performs a cross-partition query and can be expensive.
 		/// Consider using Query with Take for pagination instead of counting all results.
 		/// </remarks>
-		Task<int> CountSQL(string[]? partitionKey, string where, Dictionary<string, object?>? parameters = null,	System.Threading.CancellationToken cancelToken = default);
+		Task<int> CountSQL(string[]? partitionKey, string where, Dictionary<string, object?>? parameters = null, System.Threading.CancellationToken cancelToken = default);
 
 		/// <summary>
 		/// Executes a SQL query and returns raw JSON elements.
@@ -489,6 +492,9 @@ namespace Corner49.Infra.DB {
 		Task<ChangeFeedProcessor> GetAllChangesFeedProcessor(Container.ChangeFeedHandler<T> changeHandler, string leaseName = "changeLeases", string? processorName = null, string? instanceName = null,
 				Func<Task>? onRelease = null,
 				Func<Exception, Task>? onError = null);
+
+
+		IAsyncEnumerable<T> GetChanges(string leaseId, string leaseName = "changeLeases", CancellationToken cancellationToken = default);
 	}
 
 	/// <summary>
@@ -734,6 +740,47 @@ namespace Corner49.Infra.DB {
 			if (onError != null) bld = bld.WithErrorNotification((lease, err) => { return onError(err); });
 
 			return bld.Build();
+		}
+
+		public async IAsyncEnumerable<T> GetChanges(string leaseId, string leaseName = "changeLeases", [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+
+			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
+
+			var resp = await _database.CreateContainerIfNotExistsAsync(new ContainerProperties(leaseName, "/id"));
+			var leaseContainer = resp.Container;
+
+			ChangeLease? lease = null;
+
+			try {
+				var leaseResp = await resp.Container.ReadItemAsync<ChangeLease>(leaseId, new PartitionKey(leaseId), cancellationToken: cancellationToken);
+				lease = leaseResp?.Resource;
+			} catch (Exception err) { 
+			}
+			if (lease == null) lease = new ChangeLease { Id = leaseId, ContinuationToken = null, StartTime = DateTime.UtcNow };
+
+			ChangeFeedStartFrom start = string.IsNullOrEmpty(lease?.ContinuationToken) ? ChangeFeedStartFrom.Time(lease.StartTime) : ChangeFeedStartFrom.ContinuationToken(lease.ContinuationToken);
+
+			var feed = this.Container.GetChangeFeedIterator<T>(start, ChangeFeedMode.LatestVersion);
+			while (feed.HasMoreResults && !cancellationToken.IsCancellationRequested) {
+
+				var response = await feed.ReadNextAsync(cancellationToken);
+				if (response.StatusCode == HttpStatusCode.NotModified) {
+					//no more changes
+					break;
+				}
+
+				foreach (T itm in response) {
+					yield return itm;
+				}
+
+				lease.ContinuationToken = response.ContinuationToken;
+
+			}
+
+			try {
+				await resp.Container.UpsertItemAsync<ChangeLease>(lease, new PartitionKey(lease.Id), cancellationToken: cancellationToken);
+			} catch (Exception err) {
+			}
 		}
 
 		/// <inheritdoc />

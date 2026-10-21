@@ -29,6 +29,7 @@ namespace Corner49.SampleCLI {
 			infra.AddJob<Jobs.ListPartsJob>("Parts", "List all parts in the database");
 
 			infra.AddJob<Jobs.GtmLookup>("GtmLookup", "Check the GTM lookup service bus queue");
+			infra.AddJob<Jobs.PartsChanges>("PartsChanges", "Check the Parts changes in the database");
 
 
 
