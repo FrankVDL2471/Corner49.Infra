@@ -8,6 +8,7 @@
 		<SelfContained>true</SelfContained>
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 		<PublishSingleFile>true</PublishSingleFile>
+		<UserSecretsId>515d3647-cd61-4e2c-86dc-665839ccbc36</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,10 +20,6 @@
 
   <ItemGroup>
     <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest">
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest">
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
