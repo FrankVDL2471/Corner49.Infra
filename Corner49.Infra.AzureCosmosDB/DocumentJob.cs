@@ -20,7 +20,7 @@ namespace Corner49.Infra {
 
 		public string? ContainerName { get; set; }
 
-		public abstract Task OnChange(T item);
+		public abstract Task OnChange(IReadOnlyList<T> inputs);
 
 		public async Task Execute(string[]? args = null, CancellationToken cancellationToken = default) {
 			if (this.ContainerName == null) {
@@ -34,8 +34,8 @@ namespace Corner49.Infra {
 			}
 
 			string leaseId = $"{this.GetType().Name}-{this.GetType().Assembly.GetName().Name}";
-			await foreach(T item in repo.GetChanges(leaseId, "changeLeases", cancellationToken)) {
-				await this.OnChange(item);
+			await foreach(IList<T> items in repo.GetChanges(leaseId, "changeLeases", cancellationToken)) {
+				await this.OnChange(items.AsReadOnly());
 			}
 		}
 	}

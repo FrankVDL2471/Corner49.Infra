@@ -494,7 +494,7 @@ namespace Corner49.Infra.DB {
 				Func<Exception, Task>? onError = null);
 
 
-		IAsyncEnumerable<T> GetChanges(string leaseId, string leaseName = "changeLeases", CancellationToken cancellationToken = default);
+		IAsyncEnumerable<IList<T>> GetChanges(string leaseId, string leaseName = "changeLeases", CancellationToken cancellationToken = default);
 	}
 
 	/// <summary>
@@ -742,7 +742,7 @@ namespace Corner49.Infra.DB {
 			return bld.Build();
 		}
 
-		public async IAsyncEnumerable<T> GetChanges(string leaseId, string leaseName = "changeLeases", [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+		public async IAsyncEnumerable<IList<T>> GetChanges(string leaseId, string leaseName = "changeLeases", [EnumeratorCancellation] CancellationToken cancellationToken = default) {
 
 			if (this.Container == null) throw new DocumentContainerNotFoundException(_containerName);
 
@@ -769,10 +769,7 @@ namespace Corner49.Infra.DB {
 					break;
 				}
 
-				foreach (T itm in response) {
-					yield return itm;
-				}
-
+				yield return response.ToList();
 				lease.ContinuationToken = response.ContinuationToken;
 
 			}

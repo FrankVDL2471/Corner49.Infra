@@ -12,8 +12,10 @@ namespace Corner49.SampleCLI.Jobs {
 			this.ContainerName = "Parts";
 		}
 		
-		public override Task OnChange(DataModel item) {
-			Console.WriteLine("Item Changed : " + item.Name);
+		public override Task OnChange(IReadOnlyList<DataModel> inputs) {
+			foreach (var item in inputs) {
+				Console.WriteLine("Item Changed : " + item.Name);
+			}	
 			return Task.CompletedTask;
 		}	
 	}
