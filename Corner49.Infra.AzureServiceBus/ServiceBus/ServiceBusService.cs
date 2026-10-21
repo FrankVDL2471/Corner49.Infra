@@ -62,7 +62,7 @@ namespace Corner49.Infra.ServiceBus {
 
 		public async Task ReadMessages(IServiceBusOptions options, Func<ServiceBusCommand, Task<bool>> processCommand, CancellationToken cancellationToken = default) {
 			var receiverOptions = new ServiceBusReceiverOptions {
-				ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete,
+				ReceiveMode = ServiceBusReceiveMode.PeekLock,
 				PrefetchCount = options.PrefetchCount
 			};
 
