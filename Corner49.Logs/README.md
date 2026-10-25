@@ -1,7 +1,7 @@
 # Corner49.Logs
 
 A standalone .NET CLI that exports Azure App Service / Azure Functions diagnostic logs from an
-Azure Storage account into local SQLite databases - one per resource group, holding every
+Azure Storage account into local SQLite databases - one per resource group and month, holding every
 parsed, normalized log event - so they can be queried with plain SQL. Point a tool like Claude
 Code (or any SQLite client) at the databases to ask questions about your logs.
 
@@ -24,7 +24,7 @@ Corner49.Logs <env> [--data-dir <path>] [--subscription <id>] [--resource-group 
 | `--resource-group` | (all) | Resource group the app belongs to |
 | `--site` | (all) | App Service / Function App site name |
 | `--container` | (all 4) | Restrict to a single `insights-logs-*` container |
-| `--since` | (incremental) | Only log days (UTC) on/after this date. Every day from here through `--until` is re-checked against Azure, even days already complete. Never earlier than `Export:MaxAgeDays` days ago |
+| `--since` | (incremental) | Only log days (UTC) on/after this date. Every day from here through `--until` is re-checked against Azure, even days already complete. Never earlier than `Export:MaxAgeDays` days ago, nor before the months kept by `Export:RetentionMonths` |
 | `--until` | (today) | Only log days (UTC) on/before this date |
 
 ```
@@ -47,13 +47,14 @@ over the files.
 | `{env}-connectstring` | Storage account connection string for `<env>`, e.g. `prod-connectstring`, `dev-connectstring` |
 | `data_dir` | Data directory when `--data-dir` is omitted (environment variable `DATA_DIR`) |
 | `Export:MaxAgeDays` | Hard limit (default `90`) on how far back the exporter goes, whatever `--since` says (environment variable `Export__MaxAgeDays`) |
+| `Export:RetentionMonths` | Full months (default `3`) kept besides the current one; older monthly databases are deleted at the end of every export (environment variable `Export__RetentionMonths`) |
 
 ```json
 {
   "prod-connectstring": "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net",
   "dev-connectstring": "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net",
   "data_dir": "d:\\logs",
-  "Export": { "MaxAgeDays": 10 }
+  "Export": { "MaxAgeDays": 10, "RetentionMonths": 3 }
 }
 ```
 
@@ -106,7 +107,7 @@ Sites are discovered by listing those levels (skipping the ones pinned by
 prefix, so a run never lists more than it checks.
 
 **Incremental exports**: without `--since`, a run works out per site and container which UTC
-days to check from what's already in the resource group's database:
+days to check from what's already in the resource group's monthly databases:
 
 - **Never exported before**: the last `Export:MaxAgeDays` days through today are exported.
 - **Otherwise**: every day that already has blobs in the database, plus every day from the
@@ -121,20 +122,35 @@ days to check from what's already in the resource group's database:
 One blob failing (auth error, malformed content, network issue) doesn't stop the others; it's
 recorded in `blobs` with `status = 'Failed'` and an `error_message`, and retried on the next run.
 
+**Retention**: at the end of every export, the monthly databases of months more than
+`Export:RetentionMonths` full months back are deleted, in every resource group folder of the data
+directory (with `3`, a run in October keeps July through October and deletes June and older).
+
 ## Databases
 
-Every resource group in the blob path gets its own SQLite database in the data directory,
-named after the resource group in lowercase:
+Every resource group in the blob path gets its own folder in the data directory, with one SQLite
+database per month, all named after the resource group in lowercase:
 
 ```
 d:/logs/
-  my-app-dev.db     <- MY-APP-DEV
-  my-app-prd.db     <- MY-APP-PRD
+  my-app-dev/                    <- MY-APP-DEV
+    my-app-dev-2026-09.db
+    my-app-dev-2026-10.db
+  my-app-prd/                    <- MY-APP-PRD
+    my-app-prd-2026-10.db
 ```
 
 The resource group/service/date/hour of a blob come from the blob's own name (see
 `Export/BlobPathSegments.cs`), not from parsed line content, so every blob lands in a
-deterministic place even if every line inside it fails to parse.
+deterministic place even if every line inside it fails to parse. A blob goes into the database
+of its blob path's month (the `y=/m=` partition), so a day's blobs, events and checks are always in
+one file; an event logged just before midnight on the last day of a month can sit in the next
+month's database if Azure wrote it to that hour's blob. To query across months, `ATTACH` the other
+files or `UNION ALL` over them.
+
+Single-file databases of older versions (`{data dir}/{resource group}.db`) are no longer used:
+a run logs a warning while any `*.db` file sits directly in the data directory, and they can be
+deleted.
 
 Each blob is imported in a single transaction: its `blobs` row is upserted, its previous events
 deleted and the new ones inserted, and only then committed. The databases use WAL mode, so you
@@ -208,7 +224,7 @@ Configuration/  Options classes (AzureStorageOptions, ExportOptions).
 Domain/         Plain POCOs (LogEvent) and parser-side enums (LogEventLevel, LogEventType).
 Storage/        ILogStorageReader abstraction + the Azure Blob Storage implementation.
 Parsing/        ILogParser implementations - see "Adding a new log parser" below.
-Export/         LogExporter (orchestration) and the per-resource-group SQLite databases under Export/Database/.
+Export/         LogExporter (orchestration) and the per-resource-group, per-month SQLite databases under Export/Database/.
 Infrastructure/ Output directory resolution, connection string redaction.
 ```
 
@@ -219,7 +235,7 @@ CLI (RootCommandFactory -> LogsHost)
   -> LogExporter
     -> ILogStorageReader (lists/opens blobs)
     -> LogParserDispatcher -> ILogParser implementations (parses each line)
-    -> LogDatabaseFactory -> LogDatabase (one per resource group: skip-if-unchanged, day completeness)
+    -> LogDatabaseFactory -> LogDatabase (one per resource group and month: skip-if-unchanged, day completeness)
       -> BlobImport (one transaction per blob: blob row + its events)
 ```
 

@@ -6,7 +6,8 @@ using System.Globalization;
 namespace Corner49.Logs.Export.Database;
 
 /// <summary>
-/// One resource group's SQLite database ({data dir}/{resource group}.db): every exported
+/// One month of a resource group's logs as a SQLite database
+/// ({data dir}/{resource group}/{resource group}-{yyyy-MM}.db, see LogDatabaseFactory): every exported
 /// LogEvent in "events", plus the export bookkeeping that used to live in the per-day
 /// manifest.json files - one "blobs" row per exported blob (ETag, counts, status) and one
 /// "day_checks" row per day and "{container}/{service}" listed in Azure.

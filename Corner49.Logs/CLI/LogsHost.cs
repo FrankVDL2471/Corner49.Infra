@@ -45,7 +45,8 @@ public static class LogsHost {
 		builder.Services.AddSingleton(Options.Create(new AzureStorageOptions { ConnectionString = connectionString }));
 		builder.Services.AddOptions<ExportOptions>()
 				.Bind(builder.Configuration.GetSection("Export"))
-				.Validate(options => options.MaxAgeDays > 0, "Export:MaxAgeDays must be a positive number of days.");
+				.Validate(options => options.MaxAgeDays > 0, "Export:MaxAgeDays must be a positive number of days.")
+				.Validate(options => options.RetentionMonths > 0, "Export:RetentionMonths must be a positive number of months.");
 
 		string configuredDataDir = !string.IsNullOrWhiteSpace(dataDir)
 				? dataDir

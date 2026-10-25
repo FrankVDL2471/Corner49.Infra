@@ -12,10 +12,11 @@ namespace Corner49.Logs.Export;
 /// <summary>
 /// Orchestrates, per container: discover the sites (walking SUBSCRIPTIONS/RESOURCEGROUPS/SITES
 /// one directory level at a time) -&gt; decide which UTC days to check per site -&gt; list each
-/// day's blobs -&gt; for each blob, check its environment's database (skip if exported with the
-/// same ETag) -&gt; stream lines -&gt; parse -&gt; insert the events and the blob's bookkeeping row
-/// in one transaction. One blob failing does not stop the others, and every blob commits on its
-/// own, so a crash only loses the in-flight blob.
+/// day's blobs -&gt; for each blob, check its environment's database for that month (skip if
+/// exported with the same ETag) -&gt; stream lines -&gt; parse -&gt; insert the events and the blob's
+/// bookkeeping row in one transaction. One blob failing does not stop the others, and every blob
+/// commits on its own, so a crash only loses the in-flight blob. When every container is done, the
+/// monthly databases older than Export:RetentionMonths are deleted.
 ///
 /// Which days get checked for a site in a container ("{container}/{service}"):
 /// - an explicit Since: every day from Since through Until (default: today);
@@ -25,7 +26,8 @@ namespace Corner49.Logs.Export;
 ///   plus every day from the newest one through today. A day that was already listed after the
 ///   day ended, with no failed blobs, is complete and not listed again - any other day is
 ///   listed, and whatever is missing, changed or failed is fetched from Azure.
-/// In every case, days older than Export:MaxAgeDays before today are never exported.
+/// "The environment's database" is all of its monthly databases together. In every case, days older
+/// than Export:MaxAgeDays before today, or in months past Export:RetentionMonths, are never exported.
 /// </summary>
 public sealed class LogExporter(
 		ILogStorageReader storageReader,
@@ -51,15 +53,26 @@ public sealed class LogExporter(
 					outputDirectory.Path);
 		}
 
+		if (Directory.EnumerateFiles(outputDirectory.Path, "*.db").Any()) {
+			logger.LogWarning(
+					"Ignoring the single-file databases in {Directory}: events are now stored in one SQLite database per environment and month, " +
+					"in a folder per environment. The *.db files directly in {Directory} can be deleted.",
+					outputDirectory.Path, outputDirectory.Path);
+		}
+
 		DateTimeOffset startedAt = timeProvider.GetUtcNow();
 		DateOnly today = DateOnly.FromDateTime(startedAt.UtcDateTime);
 		int maxAgeDays = exportOptions.Value.MaxAgeDays;
-		ExportRun run = new(startedAt, today, today.AddDays(-maxAgeDays));
+		int retentionMonths = exportOptions.Value.RetentionMonths;
+		DateOnly retentionCutoff = LogDatabaseFactory.MonthOf(today).AddMonths(-retentionMonths);
+		DateOnly maxAgeDate = today.AddDays(-maxAgeDays);
+		ExportRun run = new(startedAt, today, maxAgeDate > retentionCutoff ? maxAgeDate : retentionCutoff);
 
 		if (request.Since < run.OldestDate) {
 			logger.LogWarning(
-					"--since {Since} is more than {MaxAgeDays} days ago (Export:MaxAgeDays); exporting from {OldestDate} instead.",
-					request.Since, maxAgeDays, run.OldestDate);
+					"--since {Since} is more than {MaxAgeDays} days ago (Export:MaxAgeDays) or before the {RetentionMonths} months kept " +
+					"(Export:RetentionMonths); exporting from {OldestDate} instead.",
+					request.Since, maxAgeDays, retentionMonths, run.OldestDate);
 		}
 
 		foreach (string container in request.Containers) {
@@ -69,6 +82,8 @@ public sealed class LogExporter(
 				await ExportSiteAsync(run, container, site, request, cancellationToken);
 			}
 		}
+
+		databases.DeleteExpired(retentionCutoff);
 
 		logger.LogInformation("Export completed. Total events exported: {Total}", run.EventsExported);
 
@@ -107,7 +122,7 @@ public sealed class LogExporter(
 
 			DateTimeOffset listedAt = timeProvider.GetUtcNow();
 			await ExportListingAsync(run, container, DiagnosticBlobPath.BuildDatePrefix(site.Prefix, date), cancellationToken);
-			databases.Get(site.Environment).MarkChecked(date, checkKey, listedAt);
+			databases.Get(site.Environment, date).MarkChecked(date, checkKey, listedAt);
 		}
 	}
 
@@ -130,7 +145,7 @@ public sealed class LogExporter(
 	private async Task ExportFileAsync(
 			ExportRun run, string container, LogFileInfo file, BlobPathSegments segments, CancellationToken cancellationToken) {
 		string blobKey = $"{container}/{file.Name}";
-		LogDatabase database = databases.Get(segments.Environment);
+		LogDatabase database = databases.Get(segments.Environment, segments.Date);
 
 		if (database.GetBlob(container, file.Name) is { Status: BlobStatus.Success, ETag: not null } existing &&
 				existing.ETag == file.ETag) {
@@ -208,7 +223,7 @@ public sealed class LogExporter(
 			return cached;
 		}
 
-		DatabaseIndex stored = databases.Get(environment).LoadIndex();
+		DatabaseIndex stored = databases.LoadIndex(environment);
 
 		HashSet<string> checkedKeys = stored.Checks.Select(c => c.CheckKey).ToHashSet();
 		Dictionary<DateOnly, HashSet<string>> completeKeys = stored.Checks
@@ -283,7 +298,10 @@ public sealed class LogExporter(
 		/// <summary>The run's current UTC day.</summary>
 		public DateOnly Today { get; } = today;
 
-		/// <summary>The oldest UTC day this run may export (Today minus Export:MaxAgeDays).</summary>
+		/// <summary>
+		/// The oldest UTC day this run may export: Today minus Export:MaxAgeDays, but never before the
+		/// first month kept by Export:RetentionMonths.
+		/// </summary>
 		public DateOnly OldestDate { get; } = oldestDate;
 
 		public Dictionary<string, EnvironmentIndex> Environments { get; } = [];
