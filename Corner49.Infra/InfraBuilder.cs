@@ -547,7 +547,7 @@ namespace Corner49.Infra {
 			}
 
 			foreach (var ext in _extensions) {
-				await ext.Start(app.Services);
+				await ext.Start(app.Services, app);
 			}
 			InfraBuilder.Instance.Services = app.Services;
 			await app.RunAsync();
@@ -555,7 +555,7 @@ namespace Corner49.Infra {
 
 		public async Task Run(IHost host) {
 			foreach (var ext in _extensions) {
-				await ext.Start(host.Services);
+				await ext.Start(host.Services, host);
 			}
 			InfraBuilder.Instance.Services = host.Services;
 			await host.RunAsync();
@@ -572,7 +572,7 @@ namespace Corner49.Infra {
 				var app = host.Build();
 
 				foreach (var ext in _extensions) {
-					await ext.Start(app.Services);
+					await ext.Start(app.Services, app);
 				}
 
 				InfraBuilder.Instance.Services = app.Services;

@@ -11,7 +11,7 @@ namespace Corner49.Infra {
 		}
 
 
-		public virtual Task Start(IServiceProvider serviceProvider) {
+		public virtual Task Start(IServiceProvider serviceProvider, object? host = null) {
 			return Task.CompletedTask;
 		}
 

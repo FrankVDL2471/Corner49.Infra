@@ -32,7 +32,7 @@ namespace Corner49.Infra {
 		}
 
 
-		public override async Task Start(IServiceProvider serviceProvider) {
+		public override async Task Start(IServiceProvider serviceProvider, object? host = null) {
 			if (_docDBBuilder != null) await _docDBBuilder.Init(serviceProvider);
 		}
 

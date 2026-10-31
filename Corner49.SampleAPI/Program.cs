@@ -10,20 +10,20 @@ namespace Corner49.SampleAPI {
 				.WithCors((host) => true)
 				.WithHealthCheck();
 
-			infra.WithAuth0((opt) => {
-				opt.Domain = infra.Configuration["Auth:Domain"];
-				opt.Audience = infra.Configuration["Auth:Audience"];
-				opt.ClientId = infra.Configuration["Auth:ClientId"];
-				opt.ClientSecret = infra.Configuration["Auth:ClientSecret"];
-			});
+			//infra.WithAuth0((opt) => {
+			//	opt.Domain = infra.Configuration["Auth:Domain"];
+			//	opt.Audience = infra.Configuration["Auth:Audience"];
+			//	opt.ClientId = infra.Configuration["Auth:ClientId"];
+			//	opt.ClientSecret = infra.Configuration["Auth:ClientSecret"];
+			//});
 
 
-			//infra.AddJobs((bld) => { },
-			// (cfg) => {
-			//	 cfg.UseSqlServer = true;
-			//	 cfg.ConnectString = infra.Configuration["ConnectionStrings:ConnectionString"];
-			//	 cfg.DbName = "jobs-dev-test";
-			// });
+
+			infra.AddJobs((bld) => { },
+			 (cfg) => {
+				 cfg.UseSqlServer = false;
+				 cfg.EnableDashboard = true;
+			 });
 
 			//			infra = infra.AddServiceBus(cfg => {
 			//				//cfg.DeveloperMode = true;
