@@ -37,11 +37,19 @@ namespace Corner49.Infra.Jobs {
 				name += "(" + string.Join(", ", args.Select(c => $"{c.Key}={c.Value}")) + ")";
 			}
 
+			bool enableQueue = queue != null;
+			if (_jobClient is BackgroundJobClient client) {
+				if (client.Storage is Hangfire.MemoryStorage.MemoryStorage) {
+					enableQueue = false;
+				}
+			}
+
+
 			try {
-				if (queue == null) {
-					this.Id = _jobClient.Enqueue(() => Run(name, args, cancellationToken));
-				} else {
+				if (enableQueue) {
 					this.Id = _jobClient.Enqueue(queue, () => Run(name, args, cancellationToken));
+				} else {
+					this.Id = _jobClient.Enqueue(() => Run(name, args, cancellationToken));
 				}
 				return this.Id;
 			} catch (Exception err) {
